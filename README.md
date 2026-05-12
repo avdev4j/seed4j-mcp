@@ -15,6 +15,10 @@ This repo is a **side project of seed4j**, deliberately kept out of the main see
 - Java 25+
 - A running seed4j instance reachable over HTTP (default `http://localhost:1339`)
 
+## Install
+
+Grab the latest fat jar from the [Releases page](https://github.com/avdev4j/seed4j-mcp/releases) and skip to [Configure an MCP client](#configure-an-mcp-client) below. To build from source instead, see the next section.
+
 ## Build & run
 
 ```bash
@@ -42,7 +46,7 @@ The server speaks MCP over **STDIO**. Point your client at the built jar:
   "mcpServers": {
     "seed4j": {
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/seed4j-mcp/target/seed4j-mcp-0.0.1-SNAPSHOT.jar"],
+      "args": ["-jar", "/absolute/path/to/seed4j-mcp.jar"],
       "env": {
         "SEED4J_BASE_URL": "http://localhost:1339"
       }
