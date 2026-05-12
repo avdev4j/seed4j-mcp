@@ -57,12 +57,19 @@ For Claude Code, add it via `claude mcp add` or edit your project's `.mcp.json` 
 | `search_modules` | Keyword search across module slugs, descriptions, tags, and categories. |
 | `get_module_details` | Property definitions (mandatory/optional inputs, defaults, types) for one module. |
 | `get_module_dependencies` | Prerequisite graph + feature choices for a module — call before `apply_module`. |
+| `validate_properties` | Dry-run check of a property map against a module's schema (no mutation). |
 | `list_presets` | Curated, pre-ordered stacks (e.g. "Webapp: Vue + Spring Boot"). |
+| `get_preset_details` | Fetch one preset by name with its ordered module list. |
 | `get_project_status` | History of a seed4j project folder: applied modules and aggregated properties. |
 | `create_project` | Initialise a new base project at a target folder. |
 | `apply_module` | Apply a module to an existing project folder. |
+| `apply_modules` | Apply an ordered list of modules to one folder in a single call (stops on first failure). |
+| `apply_preset` | Resolve a preset by name and apply all its modules with a shared property map. |
 
-A typical agent flow: `search_modules` or `list_presets` → `get_module_dependencies` → `create_project` → `apply_module` (one call per module in dependency order).
+Typical agent flows:
+
+- **Curated stack:** `list_presets` → `get_preset_details` → `apply_preset`.
+- **Custom stack:** `search_modules` → `get_module_dependencies` → `validate_properties` → `apply_modules` (one batch call covering the dependency order).
 
 ## Tests
 

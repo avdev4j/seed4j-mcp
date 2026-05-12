@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seed4j.mcp.client.Seed4jClient;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ public class Seed4jTools {
 
   private static final Logger log = LoggerFactory.getLogger(Seed4jTools.class);
   private static final TypeReference<Map<String, Object>> PROPERTIES_TYPE = new TypeReference<>() {};
+  private static final TypeReference<List<Map<String, Object>>> STEPS_TYPE = new TypeReference<>() {};
 
   private final Seed4jClient client;
   private final ObjectMapper objectMapper;
@@ -59,6 +61,16 @@ public class Seed4jTools {
   )
   public String listPresets() {
     return client.listPresets();
+  }
+
+  @Tool(
+    name = "get_preset_details",
+    description = "Return a single preset by its display name (case-insensitive): the ordered list of module slugs it applies. Use this after list_presets to commit to one preset without re-fetching the full catalogue."
+  )
+  public String getPresetDetails(
+    @ToolParam(description = "Preset name as shown by list_presets, e.g. 'Java Library with Maven'.") String presetName
+  ) {
+    return client.getPresetDetails(presetName);
   }
 
   @Tool(
@@ -112,6 +124,62 @@ public class Seed4jTools {
     Map<String, Object> properties = parseProperties(propertiesJson);
     log.debug("create_project folder={} properties={}", projectFolder, properties);
     return client.createProject(projectFolder, properties);
+  }
+
+  @Tool(
+    name = "validate_properties",
+    description = "Dry-run check of a property map against a module's schema (mandatory keys present, types match STRING/INTEGER/BOOLEAN, no unknown keys). Returns {valid, errors, warnings}. Run this before apply_module to surface missing or mistyped inputs without mutating the project."
+  )
+  public String validateProperties(
+    @ToolParam(description = "Slug identifier of the seed4j module whose schema will be checked.") String moduleSlug,
+    @ToolParam(
+      description = "Properties to validate as a JSON object string, e.g. '{\"packageName\":\"com.example.app\"}'."
+    ) String propertiesJson
+  ) {
+    Map<String, Object> properties = parseProperties(propertiesJson);
+    return client.validateProperties(moduleSlug, properties);
+  }
+
+  @Tool(
+    name = "apply_modules",
+    description = "Apply an ordered list of modules to the same project folder in one call, stopping at the first failure. Pass the steps as a JSON array of {slug, properties} objects in the order returned by get_module_dependencies. Returns {appliedCount, applied, failure, remaining}."
+  )
+  public String applyModules(
+    @ToolParam(description = "Absolute path to the existing project folder to mutate.") String projectFolder,
+    @ToolParam(
+      description = "Ordered steps as a JSON array, e.g. '[{\"slug\":\"maven-java\",\"properties\":{}},{\"slug\":\"java-base\",\"properties\":{\"packageName\":\"com.example.app\"}}]'."
+    ) String stepsJson
+  ) {
+    List<Map<String, Object>> steps = parseSteps(stepsJson);
+    log.debug("apply_modules folder={} stepCount={}", projectFolder, steps.size());
+    return client.applyModules(projectFolder, steps);
+  }
+
+  @Tool(
+    name = "apply_preset",
+    description = "Resolve a preset by name and apply every module in its order to the given project folder, sharing one property map across all modules. Stops at the first failure. Use this instead of apply_module when the user wants a curated stack from list_presets."
+  )
+  public String applyPreset(
+    @ToolParam(description = "Preset name as shown by list_presets, e.g. 'Java Library with Maven'.") String presetName,
+    @ToolParam(description = "Absolute path to the existing project folder to mutate.") String projectFolder,
+    @ToolParam(
+      description = "Shared properties for every module in the preset as a JSON object string, e.g. '{\"projectName\":\"My App\",\"baseName\":\"myapp\",\"packageName\":\"com.example.app\"}'."
+    ) String propertiesJson
+  ) {
+    Map<String, Object> properties = parseProperties(propertiesJson);
+    log.debug("apply_preset name={} folder={} properties={}", presetName, projectFolder, properties);
+    return client.applyPreset(presetName, projectFolder, properties);
+  }
+
+  private List<Map<String, Object>> parseSteps(String json) {
+    if (json == null || json.isBlank()) {
+      throw new IllegalArgumentException("Steps JSON is required");
+    }
+    try {
+      return objectMapper.readValue(json, STEPS_TYPE);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid JSON for steps: " + json, e);
+    }
   }
 
   private Map<String, Object> parseProperties(String json) {
