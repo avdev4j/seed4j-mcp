@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: seed4j-mcp
+  main:
+    web-application-type: none
+    banner-mode: off
+  ai:
+    mcp:
+      server:
+        name: seed4j-mcp
+        version: 0.0.1
+        stdio: true
+
+# STDIO transport requires that NOTHING is written to stdout besides MCP frames.
+# Route logs to a file and silence the console appender.
+logging:
+  pattern:
+    console: ""
+  file:
+    name: ./logs/seed4j-mcp.log
+  level:
+    com.seed4j.mcp.tools: DEBUG
+
+seed4j:
+  base-url: http://localhost:1339

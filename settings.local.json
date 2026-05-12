@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__seed4j__list_modules",
+      "Bash(python3)",
+      "Bash(python3 -c ' *)",
+      "mcp__seed4j__create_project",
+      "Bash(curl -sS -o /dev/null -w \"GET /api/projects/init -> %{http_code}\\\\n\" http://localhost:7471/api/projects/init)",
+      "Bash(curl -sS -o /dev/null -w \"POST /api/projects -> %{http_code}\\\\n\" -X POST -H \"Content-Type: application/json\" -d '{}' http://localhost:7471/api/projects)",
+      "Bash(curl -sS http://localhost:7471/api/modules/init)",
+      "Bash(python3 -m json.tool)",
+      "mcp__seed4j__get_module_details",
+      "Bash(mkdir -p /tmp/testmcp)",
+      "Read(//tmp/**)",
+      "mcp__seed4j__apply_module",
+      "Read(//private/tmp/testmcp/**)",
+      "Bash(./mvnw -q compile)",
+      "Bash(mvn -q compile)",
+      "Bash(mvn -q -DskipTests package)",
+      "Read(//private/tmp/testmcp2/**)",
+      "Bash(cat /tmp/testmcp3/.seed4j/modules/*-init.json)",
+      "Read(//private/tmp/testmcp3/.seed4j/modules/**)",
+      "Bash(curl -sS http://localhost:1339/api/modules/init)",
+      "Bash(curl -sS -o /dev/null -w \"list /api/modules -> %{http_code}\\\\n\" http://localhost:1339/api/modules)",
+      "Bash(mkdir -p /tmp/seed4j-probe-map /tmp/seed4j-probe-list)",
+      "Bash(curl -sS -o /dev/null -w 'HTTP %{http_code}\\\\n' -X POST http://localhost:1339/api/modules/init/apply-patch -H 'Content-Type: application/json' -d '{\"projectFolder\":\"/tmp/seed4j-probe-map\",\"properties\":{\"projectName\":\"PROBE_MAP\",\"baseName\":\"probemap\",\"nodePackageManager\":\"npm\"}}')",
+      "Bash(curl -sS -o /dev/null -w 'HTTP %{http_code}\\\\n' -X POST http://localhost:1339/api/modules/init/apply-patch -H 'Content-Type: application/json' -d '{\"projectFolder\":\"/tmp/seed4j-probe-list\",\"properties\":[{\"key\":\"projectName\",\"value\":\"PROBE_LIST\"},{\"key\":\"baseName\",\"value\":\"probelist\"},{\"key\":\"nodePackageManager\",\"value\":\"npm\"}]}')",
+      "Read(//private/tmp/seed4j-probe-map/**)",
+      "Read(//private/tmp/seed4j-probe-list/**)",
+      "Bash(curl -sS -o /dev/null -w \"swagger -> %{http_code}\\\\n\" http://localhost:1339/swagger-ui/index.html)",
+      "Bash(curl -sS -o /dev/null -w \"api-docs -> %{http_code}\\\\n\" http://localhost:1339/v3/api-docs)",
+      "Bash(curl -sS http://localhost:1339/v3/api-docs)",
+      "Bash(rm -rf /tmp/seed4j-probe-parameters)",
+      "Bash(mkdir -p /tmp/seed4j-probe-parameters)",
+      "Bash(curl -sS -o /dev/null -w 'HTTP %{http_code}\\\\n' -X POST http://localhost:1339/api/modules/init/apply-patch -H 'Content-Type: application/json' -d '{\"projectFolder\":\"/tmp/seed4j-probe-parameters\",\"commit\":false,\"parameters\":{\"projectName\":\"PROBE_PARAMS\",\"baseName\":\"probeparams\",\"nodePackageManager\":\"npm\"}}')",
+      "Bash(rm -rf /tmp/seed4j-probe-* /tmp/testmcp3 && mvn -q -DskipTests package 2>&1 | tail -10 && ls -la target/seed4j-mcp-*.jar)",
+      "Bash(curl -sS http://localhost:1339/api/modules-landscape)",
+      "Bash(curl -sS http://localhost:1339/api/presets)",
+      "mcp__seed4j__get_module_dependencies"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
