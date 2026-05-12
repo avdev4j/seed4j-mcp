@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="brand/logo.svg" alt="seed4j-mcp" width="180">
+</p>
+
 # seed4j-mcp
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes [seed4j](https://github.com/seed4j) — an open source application generator — to AI agents.

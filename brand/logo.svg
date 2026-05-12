@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="seed4j-mcp logo">
+  <title>seed4j-mcp</title>
+  <defs>
+    <linearGradient id="hexFill" x1="400" y1="265" x2="400" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3b2008"/>
+      <stop offset="0.7" stop-color="#2c1806"/>
+      <stop offset="1" stop-color="#1a0e04"/>
+    </linearGradient>
+    <radialGradient id="nodeGold" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#f5d987"/>
+      <stop offset="1" stop-color="#d8b345"/>
+    </radialGradient>
+    <radialGradient id="nodeGreen" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#5cff5e"/>
+      <stop offset="1" stop-color="#00ed04"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Hex frame: same geometry as seed4j -->
+  <polygon
+    points="400,265 614,389 614,636 400,760 186,636 186,389"
+    fill="url(#hexFill)"
+    stroke="#e2be66"
+    stroke-width="10"
+    stroke-linejoin="round"/>
+
+  <!-- Sprout above the hex top point -->
+  <g>
+    <path d="M 400 295 Q 400 250 400 195" stroke="#419845" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <!-- Left leaf (bright green, like seed4j) -->
+    <path d="M 400 245 Q 355 215 320 240 Q 350 265 400 252 Z"
+          fill="#00ed04" stroke="#2d6e30" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Right leaf (forest green) -->
+    <path d="M 400 215 Q 445 185 480 210 Q 450 235 400 222 Z"
+          fill="#419845" stroke="#2d6e30" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  <!-- MCP triangle: server (top) talks to two clients (bottom) -->
+  <g>
+    <!-- Connection edges -->
+    <line x1="400" y1="450" x2="285" y2="615" stroke="#e2be66" stroke-width="9" stroke-linecap="round"/>
+    <line x1="400" y1="450" x2="515" y2="615" stroke="#e2be66" stroke-width="9" stroke-linecap="round"/>
+    <line x1="285" y1="615" x2="515" y2="615" stroke="#e2be66" stroke-width="9" stroke-linecap="round"/>
+
+    <!-- Server node (gold, larger) -->
+    <circle cx="400" cy="450" r="46" fill="url(#nodeGold)" stroke="#3b2008" stroke-width="5"/>
+
+    <!-- Client nodes (green) -->
+    <circle cx="285" cy="615" r="34" fill="url(#nodeGreen)" stroke="#3b2008" stroke-width="5"/>
+    <circle cx="515" cy="615" r="34" fill="url(#nodeGreen)" stroke="#3b2008" stroke-width="5"/>
+  </g>
+</svg>
