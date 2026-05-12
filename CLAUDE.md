@@ -10,7 +10,7 @@ This repo is a **side project of seed4j**, deliberately kept out of the main see
 
 ## Tech Stack
 
-- Java 21, Spring Boot 3.4, Maven.
+- Java 25, Spring Boot 3.4, Maven.
 - Spring AI 1.0.x — specifically `spring-ai-starter-mcp-server` for MCP over **STDIO** transport.
 - `RestClient` (from `spring-web`) for the synchronous HTTP calls into seed4j.
 

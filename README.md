@@ -8,7 +8,7 @@ This repo is a **side project of seed4j**, deliberately kept out of the main see
 
 ## Requirements
 
-- Java 21+
+- Java 25+
 - A running seed4j instance reachable over HTTP (default `http://localhost:1339`)
 
 ## Build & run
