@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * HTTP client over the seed4j REST API. Endpoints follow the JHipster-Lite-style
@@ -32,8 +33,12 @@ public class Seed4jClient {
   private final RestClient http;
   private final ObjectMapper objectMapper;
 
-  public Seed4jClient(@Value("${seed4j.base-url}") String baseUrl, ObjectMapper objectMapper) {
-    this.http = RestClient.builder().baseUrl(baseUrl).build();
+  public Seed4jClient(
+    @Value("${seed4j.base-url}") String baseUrl,
+    RestClient.Builder restClientBuilder,
+    ObjectMapper objectMapper
+  ) {
+    this.http = restClientBuilder.baseUrl(baseUrl).build();
     this.objectMapper = objectMapper;
   }
 
@@ -47,6 +52,214 @@ public class Seed4jClient {
 
   public String listPresets() {
     return http.get().uri("/api/presets").retrieve().body(String.class);
+  }
+
+  /**
+   * Fetch a single preset by its display name (case-insensitive). Returns the preset object
+   * (name + ordered module slugs) extracted from {@code /api/presets}. Throws
+   * {@link IllegalArgumentException} when no preset matches.
+   */
+  public String getPresetDetails(String presetName) {
+    if (presetName == null || presetName.isBlank()) {
+      throw new IllegalArgumentException("Preset name is required");
+    }
+    JsonNode root;
+    try {
+      root = objectMapper.readTree(listPresets());
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to parse seed4j presets list", e);
+    }
+    String target = presetName.trim().toLowerCase();
+    for (JsonNode preset : root.path("presets")) {
+      if (preset.path("name").asText("").trim().toLowerCase().equals(target)) {
+        try {
+          return objectMapper.writeValueAsString(preset);
+        } catch (JsonProcessingException e) {
+          throw new IllegalStateException("Failed to serialize preset " + presetName, e);
+        }
+      }
+    }
+    throw new IllegalArgumentException("Preset not found: " + presetName);
+  }
+
+  /**
+   * Validate a property map against a module's schema (the {@code definitions} returned by
+   * {@code /api/modules/{slug}}). Pure local check — does not call seed4j to mutate anything.
+   * Returns JSON: {@code {valid, errors:[{key,issue}], warnings:[{key,issue}]}}.
+   */
+  public String validateProperties(String moduleSlug, Map<String, Object> properties) {
+    JsonNode schema;
+    try {
+      schema = objectMapper.readTree(getModuleDetails(moduleSlug));
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to parse module schema for " + moduleSlug, e);
+    }
+    Map<String, Object> safeProperties = properties == null ? Map.of() : properties;
+    List<Map<String, String>> errors = new ArrayList<>();
+    List<Map<String, String>> warnings = new ArrayList<>();
+    Set<String> knownKeys = new HashSet<>();
+
+    for (JsonNode definition : schema.path("definitions")) {
+      String key = definition.path("key").asText();
+      knownKeys.add(key);
+      String type = definition.path("type").asText("STRING");
+      boolean mandatory = definition.path("mandatory").asBoolean(false);
+      boolean present = safeProperties.containsKey(key);
+      if (!present) {
+        if (mandatory) {
+          errors.add(issue(key, "missing mandatory property (type " + type + ")"));
+        }
+        continue;
+      }
+      Object value = safeProperties.get(key);
+      String typeIssue = checkType(type, value);
+      if (typeIssue != null) {
+        errors.add(issue(key, typeIssue));
+      }
+    }
+
+    for (String key : safeProperties.keySet()) {
+      if (!knownKeys.contains(key)) {
+        warnings.add(issue(key, "unknown property — not declared in module schema"));
+      }
+    }
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("slug", moduleSlug);
+    result.put("valid", errors.isEmpty());
+    result.put("errors", errors);
+    result.put("warnings", warnings);
+    try {
+      return objectMapper.writeValueAsString(result);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to serialize validation result for " + moduleSlug, e);
+    }
+  }
+
+  private Map<String, String> issue(String key, String message) {
+    Map<String, String> entry = new LinkedHashMap<>();
+    entry.put("key", key);
+    entry.put("issue", message);
+    return entry;
+  }
+
+  private String checkType(String type, Object value) {
+    if (value == null) {
+      return "value is null";
+    }
+    return switch (type) {
+      case "STRING" -> value instanceof String ? null : "expected STRING, got " + value.getClass().getSimpleName();
+      case "INTEGER" -> isInteger(value) ? null : "expected INTEGER, got " + describeValue(value);
+      case "BOOLEAN" -> value instanceof Boolean ? null : "expected BOOLEAN, got " + value.getClass().getSimpleName();
+      default -> null;
+    };
+  }
+
+  private boolean isInteger(Object value) {
+    if (value instanceof Integer || value instanceof Long) {
+      return true;
+    }
+    if (value instanceof String s) {
+      try {
+        Long.parseLong(s.trim());
+        return true;
+      } catch (NumberFormatException ignored) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  private String describeValue(Object value) {
+    return value.getClass().getSimpleName() + " (" + value + ")";
+  }
+
+  /**
+   * Apply an ordered list of modules to the same project folder, stopping at the first failure.
+   * Each step is {@code {slug, properties}}. Returns a JSON summary describing what succeeded,
+   * what failed (if anything), and what remained un-applied.
+   */
+  public String applyModules(String projectFolder, List<Map<String, Object>> steps) {
+    if (steps == null || steps.isEmpty()) {
+      throw new IllegalArgumentException("At least one module step is required");
+    }
+    List<Map<String, Object>> applied = new ArrayList<>();
+    Map<String, Object> failure = null;
+    List<String> remaining = new ArrayList<>();
+
+    for (int i = 0; i < steps.size(); i++) {
+      Map<String, Object> step = steps.get(i);
+      String slug = String.valueOf(step.get("slug"));
+      @SuppressWarnings("unchecked")
+      Map<String, Object> props = step.get("properties") instanceof Map
+        ? (Map<String, Object>) step.get("properties")
+        : Map.of();
+      if (failure != null) {
+        remaining.add(slug);
+        continue;
+      }
+      try {
+        String response = applyModule(slug, projectFolder, props);
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("slug", slug);
+        entry.put("response", response);
+        applied.add(entry);
+      } catch (RestClientResponseException e) {
+        failure = describeFailure(slug, e.getStatusCode().value(), e.getResponseBodyAsString());
+      } catch (RuntimeException e) {
+        failure = describeFailure(slug, 0, e.getMessage());
+      }
+    }
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("projectFolder", projectFolder);
+    result.put("appliedCount", applied.size());
+    result.put("applied", applied);
+    result.put("failure", failure);
+    result.put("remaining", remaining);
+    try {
+      return objectMapper.writeValueAsString(result);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to serialize batch apply result", e);
+    }
+  }
+
+  private Map<String, Object> describeFailure(String slug, int status, String body) {
+    Map<String, Object> failure = new LinkedHashMap<>();
+    failure.put("slug", slug);
+    failure.put("status", status);
+    failure.put("body", body);
+    return failure;
+  }
+
+  /**
+   * Apply a preset (resolved by name) to the given project folder. The shared properties map
+   * is passed to every module in the preset — presets are designed around a common set of
+   * base inputs (project name, base name, package, etc.). Stops at the first failing module.
+   */
+  public String applyPreset(String presetName, String projectFolder, Map<String, Object> properties) {
+    JsonNode preset;
+    try {
+      preset = objectMapper.readTree(getPresetDetails(presetName));
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to parse preset " + presetName, e);
+    }
+    Map<String, Object> safeProperties = properties == null ? Map.of() : properties;
+    List<Map<String, Object>> steps = new ArrayList<>();
+    for (JsonNode module : preset.path("modules")) {
+      String slug = module.path("slug").asText();
+      if (slug.isBlank()) {
+        continue;
+      }
+      Map<String, Object> step = new LinkedHashMap<>();
+      step.put("slug", slug);
+      step.put("properties", safeProperties);
+      steps.add(step);
+    }
+    if (steps.isEmpty()) {
+      throw new IllegalStateException("Preset has no modules: " + presetName);
+    }
+    return applyModules(projectFolder, steps);
   }
 
   public String getProjectStatus(String projectFolder) {
