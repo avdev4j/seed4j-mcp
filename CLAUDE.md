@@ -10,50 +10,62 @@ This repo is a **side project of seed4j**, deliberately kept out of the main see
 
 ## Tech Stack
 
-- Java 25, Spring Boot 3.4, Maven.
-- Spring AI 1.0.x — specifically `spring-ai-starter-mcp-server` for MCP over **STDIO** transport.
-- `RestClient` (from `spring-web`) for the synchronous HTTP calls into seed4j.
+- Node.js 20+, TypeScript (ESM, `"type": "module"`).
+- `@modelcontextprotocol/sdk` — official MCP TypeScript SDK, used over **STDIO** transport.
+- `zod` for tool input schemas (registered via `McpServer.registerTool`).
+- Native `fetch` for HTTP calls into seed4j (no third-party HTTP client).
+- `vitest` for unit tests.
 
 ## Architecture
 
 Three layers, kept intentionally thin:
 
-1. **Tools** — [Seed4jTools.java](src/main/java/com/seed4j/mcp/tools/Seed4jTools.java). Each `@Tool`-annotated method is one MCP tool surfaced to the agent. Descriptions on `@Tool` and `@ToolParam` are the *only* documentation the agent sees; treat them as part of the public API. Tools currently return raw JSON `String` from seed4j so the agent sees the richest payload — wrap in typed records only when a tool needs to transform or filter the response.
-2. **Client** — [Seed4jClient.java](src/main/java/com/seed4j/mcp/client/Seed4jClient.java). Single component holding a `RestClient` against `seed4j.base-url`. All seed4j HTTP routes live here so the tools layer stays free of transport concerns. The endpoint paths (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`) match the JHipster-Lite-style API seed4j inherits — verify against the running seed4j instance before assuming they're stable. Project initialisation is *not* a dedicated endpoint; `createProject` ensures the target folder exists and then applies the `init` module via apply-patch.
-3. **Config** — [McpServerConfiguration.java](src/main/java/com/seed4j/mcp/config/McpServerConfiguration.java) registers all `@Tool` methods on `Seed4jTools` with the MCP server via a single `MethodToolCallbackProvider` bean. Adding a new tool = adding a new `@Tool` method on `Seed4jTools`; the config does not need to change.
+1. **Tools** — [src/tools.ts](src/tools.ts). `buildTools(client)` returns the list of MCP tool definitions (name, description, zod input shape, handler). Descriptions are the *only* documentation the agent sees; treat them as part of the public API. Handlers return raw JSON strings from seed4j wrapped in `{ content: [{ type: "text", text }] }`, so the agent sees the richest payload — only transform when a tool aggregates or filters the response.
+2. **Client** — [src/client.ts](src/client.ts). `Seed4jClient` holds the seed4j base URL and a `fetch` impl, and exposes one method per route. All seed4j HTTP routes live here so the tools layer stays free of transport concerns. The endpoint paths (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`, `/api/presets`, `/api/projects`, `/api/modules-landscape`) match the JHipster-Lite-style API seed4j inherits — verify against the running seed4j instance before assuming they're stable. Project initialisation is *not* a dedicated endpoint; `createProject` creates the target folder and then applies the `init` module via apply-patch.
+3. **Server / entrypoint** — [src/server.ts](src/server.ts) builds an `McpServer` and calls `registerTools`; [src/index.ts](src/index.ts) wires `Seed4jClient` + `StdioServerTransport` and connects them. Adding a new tool = adding an entry to `buildTools`; no other wiring is required.
 
 ### Tools currently exposed
-- `list_modules` — list all modules grouped by category.
-- `get_module_details` — prerequisites and dependencies for one module.
-- `apply_module` — apply a module to an existing project folder.
-- `create_project` — initialise a base project.
+- `list_modules`, `search_modules`, `get_module_details`, `get_module_dependencies`
+- `list_presets`, `get_preset_details`
+- `validate_properties`, `get_project_status`
+- `create_project`, `apply_module`, `apply_modules`, `apply_preset`
 
 ### STDIO transport caveat
-The server runs over STDIO (`spring.ai.mcp.server.stdio=true`). The MCP framing lives on stdout, so **nothing else may write to stdout** — banner is off, `web-application-type=none`, and the console log pattern is blanked in [application.yml](src/main/resources/application.yml). When adding logging or `System.out` calls, route them to the file appender (`./logs/seed4j-mcp.log`) or you will corrupt the MCP stream and the client will hang.
+The server runs over STDIO. The MCP framing lives on stdout, so **nothing else may write to stdout** — startup errors are routed to stderr in [src/index.ts](src/index.ts). If you add logging from tool handlers, use `console.error` (stderr) or write to a file; any `console.log` will corrupt the MCP stream and the client will hang.
 
 ## Build & Run
 
 ```bash
-# Build
-./mvnw clean package
+# Install deps
+npm install
 
-# Run the MCP server (STDIO — typically launched by an MCP client, not directly)
-./mvnw spring-boot:run
+# Build (compile TS → dist/)
+npm run build
+
+# Run the compiled server (STDIO — typically launched by an MCP client)
+npm start
+
+# Or run from sources without building
+npm run dev
+
+# Typecheck only
+npm run typecheck
 
 # Run all tests
-./mvnw test
+npm test
 
-# Run a single test
-./mvnw test -Dtest=Seed4jToolsTest
+# Run a single test file
+npx vitest run tests/client.test.ts
 
-# Run a single test method
-./mvnw test -Dtest=Seed4jToolsTest#listModulesReturnsCategorisedJson
+# Run tests matching a name
+npx vitest run -t "applyModules"
 ```
 
-`seed4j.base-url` defaults to `http://localhost:7471`; override via env var `SEED4J_BASE_URL` or `-Dseed4j.base-url=...`. A seed4j server must be running and reachable at that URL for any tool call to succeed.
+`SEED4J_BASE_URL` defaults to `http://localhost:1339`; override via env var. A seed4j server must be running and reachable at that URL for any tool call to succeed.
 
 ## Adding a new tool
 
 1. Add a method to `Seed4jClient` for the new seed4j endpoint.
-2. Add a `@Tool`-annotated method to `Seed4jTools` that delegates to the client. Write the `description` for an LLM reader: state what it does, when to use it, and how it relates to the other tools. Annotate each parameter with `@ToolParam`.
-3. No registration step — `MethodToolCallbackProvider` picks it up automatically.
+2. Add an entry to `buildTools` in [src/tools.ts](src/tools.ts): name, description (LLM-facing — state what it does, when to use it, how it relates to the other tools), zod `inputSchema` shape, and a handler that delegates to the client.
+3. No registration step beyond that — `registerTools` iterates `buildTools` and wires each entry into the MCP server.
+4. Add a unit test in [tests/tools.test.ts](tests/tools.test.ts) (delegation) and, if you added a non-trivial transform on the client side, in [tests/client.test.ts](tests/client.test.ts).

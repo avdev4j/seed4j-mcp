@@ -12,41 +12,42 @@ This repo is a **side project of seed4j**, deliberately kept out of the main see
 
 ## Requirements
 
-- Java 25+
+- Node.js 20+
 - A running seed4j instance reachable over HTTP (default `http://localhost:1339`)
 
 ## Install
 
-Grab the latest fat jar from the [Releases page](https://github.com/avdev4j/seed4j-mcp/releases) and skip to [Configure an MCP client](#configure-an-mcp-client) below. To build from source instead, see the next section.
-
-## Build & run
-
 ```bash
-# Build the fat jar
-./mvnw clean package
-
-# Run the server (STDIO — typically launched by an MCP client, not directly)
-./mvnw spring-boot:run
+npm install
+npm run build
 ```
 
-`seed4j.base-url` defaults to `http://localhost:1339`. Override it with:
+## Run
 
 ```bash
-SEED4J_BASE_URL=http://localhost:7471 ./mvnw spring-boot:run
-# or
-java -Dseed4j.base-url=http://localhost:7471 -jar target/seed4j-mcp-0.0.1-SNAPSHOT.jar
+# Run the compiled server (STDIO — typically launched by an MCP client, not directly)
+npm start
+
+# Or run from sources during development
+npm run dev
+```
+
+`SEED4J_BASE_URL` defaults to `http://localhost:1339`. Override it with:
+
+```bash
+SEED4J_BASE_URL=http://localhost:7471 npm start
 ```
 
 ## Configure an MCP client
 
-The server speaks MCP over **STDIO**. Point your client at the built jar:
+The server speaks MCP over **STDIO**. Point your client at the built entrypoint:
 
 ```json
 {
   "mcpServers": {
     "seed4j": {
-      "command": "java",
-      "args": ["-jar", "/absolute/path/to/seed4j-mcp.jar"],
+      "command": "node",
+      "args": ["/absolute/path/to/seed4j-mcp/dist/index.js"],
       "env": {
         "SEED4J_BASE_URL": "http://localhost:1339"
       }
@@ -82,14 +83,14 @@ Typical agent flows:
 ## Tests
 
 ```bash
-./mvnw test                                     # all tests
-./mvnw test -Dtest=Seed4jToolsTest              # one class
-./mvnw test -Dtest=Seed4jToolsTest#listModulesReturnsCategorisedJson   # one method
+npm test                            # all tests
+npm run test:watch                  # watch mode
+npx vitest run tests/client.test.ts # one file
 ```
 
 ## STDIO caveat
 
-MCP framing lives on stdout, so **nothing else may write to stdout**. The Spring banner is off, the web context is disabled, and the console log pattern is blanked in [application.yml](src/main/resources/application.yml). If you add logging or `System.out` calls, route them to the file appender (`./logs/seed4j-mcp.log`) — anything on stdout will corrupt the MCP stream and the client will hang.
+MCP framing lives on stdout, so **nothing else may write to stdout**. The entrypoint routes startup errors to stderr; do not add `console.log` or other stdout writes from the tool handlers, or the MCP stream will be corrupted and the client will hang.
 
 ## License
 

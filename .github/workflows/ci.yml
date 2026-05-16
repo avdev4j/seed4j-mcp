@@ -15,20 +15,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
         with:
-          java-version: '25'
-          distribution: 'temurin'
-          cache: 'maven'
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Run tests
-        run: ./mvnw --batch-mode --no-transfer-progress verify
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Upload surefire reports on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-reports
-          path: target/surefire-reports
-          if-no-files-found: ignore
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
