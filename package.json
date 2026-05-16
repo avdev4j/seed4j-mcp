@@ -3,6 +3,14 @@
   "version": "0.0.1",
   "description": "MCP server exposing seed4j to AI agents",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avdev4j/seed4j-mcp.git"
+  },
+  "homepage": "https://github.com/avdev4j/seed4j-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/avdev4j/seed4j-mcp/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
   "bin": {
