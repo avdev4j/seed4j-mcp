@@ -17,37 +17,26 @@ This repo is a **side project of seed4j**, deliberately kept out of the main see
 
 ## Install
 
-```bash
-npm install
-npm run build
-```
+The server is published to npm as [`seed4j-mcp`](https://www.npmjs.com/package/seed4j-mcp). The recommended way to run it is via `npx`, so no manual install is needed — your MCP client will fetch and run the latest release on demand.
 
-## Run
+If you'd rather install it globally:
 
 ```bash
-# Run the compiled server (STDIO — typically launched by an MCP client, not directly)
-npm start
-
-# Or run from sources during development
-npm run dev
+npm install -g seed4j-mcp
 ```
 
-`SEED4J_BASE_URL` defaults to `http://localhost:1339`. Override it with:
-
-```bash
-SEED4J_BASE_URL=http://localhost:7471 npm start
-```
+To build from source instead, see [Develop](#develop) below.
 
 ## Configure an MCP client
 
-The server speaks MCP over **STDIO**. Point your client at the built entrypoint:
+The server speaks MCP over **STDIO**. Point your client at the `npx` (or globally installed) entrypoint:
 
 ```json
 {
   "mcpServers": {
     "seed4j": {
-      "command": "node",
-      "args": ["/absolute/path/to/seed4j-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "seed4j-mcp"],
       "env": {
         "SEED4J_BASE_URL": "http://localhost:1339"
       }
@@ -56,7 +45,11 @@ The server speaks MCP over **STDIO**. Point your client at the built entrypoint:
 }
 ```
 
+If you installed it globally, swap `npx`/`-y seed4j-mcp` for `seed4j-mcp` directly.
+
 For Claude Code, add it via `claude mcp add` or edit your project's `.mcp.json` with the same shape.
+
+`SEED4J_BASE_URL` defaults to `http://localhost:1339`.
 
 ## Tools exposed to the agent
 
@@ -79,6 +72,22 @@ Typical agent flows:
 
 - **Curated stack:** `list_presets` → `get_preset_details` → `apply_preset`.
 - **Custom stack:** `search_modules` → `get_module_dependencies` → `validate_properties` → `apply_modules` (one batch call covering the dependency order).
+
+## Develop
+
+Clone the repo and run from source:
+
+```bash
+npm install
+npm run dev                         # run from sources via tsx
+npm run build && npm start          # compile to dist/ and run the built entrypoint
+```
+
+Override `SEED4J_BASE_URL` to point at a non-default seed4j instance:
+
+```bash
+SEED4J_BASE_URL=http://localhost:7471 npm start
+```
 
 ## Tests
 
