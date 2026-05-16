@@ -1,22 +1,22 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
     name: Build & publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
 
     steps:
       - name: Checkout tag
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up Node 24
         uses: actions/setup-node@v4
@@ -25,9 +25,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
-      - name: Set version from tag
+      - name: Set version from ref
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
