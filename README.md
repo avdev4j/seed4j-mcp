@@ -29,7 +29,38 @@ To build from source instead, see [Develop](#develop) below.
 
 ## Configure an MCP client
 
-The server speaks MCP over **STDIO**. Point your client at the `npx` (or globally installed) entrypoint:
+The server speaks MCP over **STDIO**. `SEED4J_BASE_URL` defaults to `http://localhost:1339`.
+
+### Claude Code
+
+Use the `claude mcp add` command. Pick a scope: `local` (default — current project, your machine), `project` (committed to `.mcp.json`, shared with the team), or `user` (your machine, every project).
+
+```bash
+# Local: just you, this project
+claude mcp add seed4j -- npx -y seed4j-mcp
+
+# Project: committed to .mcp.json, shared with collaborators
+claude mcp add seed4j --scope project -- npx -y seed4j-mcp
+
+# User: available across all your projects
+claude mcp add seed4j --scope user -- npx -y seed4j-mcp
+```
+
+Pass a custom seed4j URL with `--env`:
+
+```bash
+claude mcp add seed4j --env SEED4J_BASE_URL=http://localhost:7471 -- npx -y seed4j-mcp
+```
+
+Verify it's wired up:
+
+```bash
+claude mcp list
+```
+
+### Other MCP clients
+
+For Claude Desktop, Cursor, and other clients that read a JSON config, point them at the `npx` entrypoint:
 
 ```json
 {
@@ -45,11 +76,7 @@ The server speaks MCP over **STDIO**. Point your client at the `npx` (or globall
 }
 ```
 
-If you installed it globally, swap `npx`/`-y seed4j-mcp` for `seed4j-mcp` directly.
-
-For Claude Code, add it via `claude mcp add` or edit your project's `.mcp.json` with the same shape.
-
-`SEED4J_BASE_URL` defaults to `http://localhost:1339`.
+If you installed `seed4j-mcp` globally, swap `npx`/`-y seed4j-mcp` for `seed4j-mcp` directly.
 
 ## Tools exposed to the agent
 
