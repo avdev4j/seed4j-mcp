@@ -1,4 +1,5 @@
 import {
+  DEFAULT_CACHE_TTL_MS,
   DEFAULT_RETRIES,
   DEFAULT_TIMEOUT_MS,
   type Seed4jClientOptions,
@@ -39,6 +40,18 @@ export function loadConfig(env: NodeJS.ProcessEnv): LoadedConfig {
       );
     } else {
       clientOptions.retries = parsed;
+    }
+  }
+
+  const cacheTtlRaw = env.SEED4J_CACHE_TTL_MS?.trim();
+  if (cacheTtlRaw) {
+    const parsed = parseNonNegativeInteger(cacheTtlRaw);
+    if (parsed === null) {
+      warnings.push(
+        `ignoring SEED4J_CACHE_TTL_MS="${cacheTtlRaw}": expected a non-negative integer (using default ${DEFAULT_CACHE_TTL_MS})`,
+      );
+    } else {
+      clientOptions.cacheTtlMs = parsed;
     }
   }
 

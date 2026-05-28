@@ -6,7 +6,7 @@
 
 - **Transport:** STDIO. The MCP framing lives on stdout, so the server must never write anything else to stdout. Startup errors and any operational logging go to **stderr**.
 - **Process model:** one long-lived Node.js process per MCP client connection. Launched by the MCP client (Claude Desktop, IDE plugin, custom agent, …).
-- **State:** stateless. Every tool call hits seed4j over HTTP. No in-process cache today (see roadmap item 5).
+- **State:** mostly stateless. Every tool call hits seed4j over HTTP, except for the catalogue cache (`/api/modules`, `/api/modules-landscape`, `/api/presets`) which is held in-process for the duration of the TTL — see the Reliability section below.
 
 ## Layers
 
@@ -39,4 +39,4 @@ These paths are inherited from the JHipster-Lite-style API. Verify them against 
 - **Retries on idempotent GETs.** GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/modules-landscape`, `/api/projects?path=…`) are retried up to `retries` times (default **2**, override via `SEED4J_RETRIES`) on `TimeoutError`, network errors, and HTTP 5xx responses. Backoff is capped exponential. HTTP 4xx is **not** retried — those are deterministic. POSTs to `apply-patch` are **never** silently retried; an aborted apply could leave the project half-mutated, so retry is left to the agent.
 - **Authenticated seed4j.** When `SEED4J_AUTH_HEADER` (or the convenience `SEED4J_BEARER_TOKEN`) is set, every outbound request — GETs and POSTs — carries an `Authorization` header. See [configuration.md](configuration.md).
 - **Structured tool errors.** Every tool handler is wrapped: failures surface to the MCP client as `{ isError: true, content: [{ type: "text", text: <JSON> }] }` with a structured payload (`error` kind, `tool`, `status`, `endpoint`, `bodyExcerpt`, `hint`, …) instead of a raw thrown rejection. seed4j response bodies are truncated to ~500 chars to keep the agent's context clean. See [errors.md](errors.md).
-- **Catalogue caching** is not yet in place — see roadmap item #5.
+- **Catalogue cache.** `/api/modules`, `/api/modules-landscape`, and `/api/presets` are cached per-process with a TTL (default **1 hour**, override via `SEED4J_CACHE_TTL_MS`, set to `0` to disable). Repeated `list_modules`, `search_modules`, `list_presets`, `get_preset_details`, `apply_preset`, and `get_module_dependencies` calls within the TTL replay the cached body without a roundtrip. Errors are never cached. Per-slug (`/api/modules/{slug}`), project-status, and POST `apply-patch` calls are not cached.

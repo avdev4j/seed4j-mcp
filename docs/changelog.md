@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #5 — In-memory cache for the module catalogue, landscape, and presets
+
+- **Shipped:** 2026-05-28
+- **User impact:** repeated calls to `list_modules`, `search_modules`, `list_presets`, `get_preset_details`, `apply_preset`, and `get_module_dependencies` no longer refetch their underlying catalogue / landscape / presets endpoint within the TTL — they replay a cached body. Default TTL is **1 hour**, override via the new `SEED4J_CACHE_TTL_MS` env var (set to `0` to disable, useful when iterating on seed4j itself). Errors are never cached.
+- **API change:** `Seed4jClient` gains `cacheTtlMs` and `now` (injectable clock) options, plus a public `clearCache(path?)` method. `loadConfig` parses `SEED4J_CACHE_TTL_MS`.
+- **Docs touched:** [overview.md](overview.md), [configuration.md](configuration.md).
+
 ### #4 — Structured tool errors instead of thrown rejections
 
 - **Shipped:** 2026-05-28

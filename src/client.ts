@@ -35,10 +35,19 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 export const DEFAULT_RETRIES = 2;
 export const DEFAULT_RETRY_BASE_DELAY_MS = 200;
 export const DEFAULT_RETRY_MAX_DELAY_MS = 2_000;
+export const DEFAULT_CACHE_TTL_MS = 3_600_000;
 
 export type SleepFn = (ms: number) => Promise<void>;
+export type NowFn = () => number;
 
 const defaultSleep: SleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const defaultNow: NowFn = () => Date.now();
+
+const CACHEABLE_PATHS: ReadonlySet<string> = new Set([
+  "/api/modules",
+  "/api/modules-landscape",
+  "/api/presets",
+]);
 
 interface ValidationIssue {
   key: string;
@@ -63,6 +72,13 @@ export interface Seed4jClientOptions {
   retryMaxDelayMs?: number;
   sleep?: SleepFn;
   authHeader?: string;
+  cacheTtlMs?: number;
+  now?: NowFn;
+}
+
+interface CacheEntry {
+  body: string;
+  expiresAt: number;
 }
 
 export class Seed4jClient {
@@ -72,6 +88,9 @@ export class Seed4jClient {
   private readonly retryMaxDelayMs: number;
   private readonly sleep: SleepFn;
   private readonly authHeader: string | undefined;
+  private readonly cacheTtlMs: number;
+  private readonly now: NowFn;
+  private readonly cache = new Map<string, CacheEntry>();
 
   constructor(
     private readonly baseUrl: string,
@@ -92,6 +111,18 @@ export class Seed4jClient {
 
     this.sleep = options.sleep ?? defaultSleep;
     this.authHeader = options.authHeader?.trim() || undefined;
+
+    const requestedCache = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+    this.cacheTtlMs = requestedCache >= 0 ? Math.floor(requestedCache) : DEFAULT_CACHE_TTL_MS;
+    this.now = options.now ?? defaultNow;
+  }
+
+  clearCache(path?: string): void {
+    if (path === undefined) {
+      this.cache.clear();
+      return;
+    }
+    this.cache.delete(path);
   }
 
   listModules(): Promise<string> {
@@ -306,18 +337,29 @@ export class Seed4jClient {
   }
 
   private async getText(path: string): Promise<string> {
+    const cacheable = CACHEABLE_PATHS.has(path) && this.cacheTtlMs > 0;
+    if (cacheable) {
+      const hit = this.cache.get(path);
+      if (hit && this.now() < hit.expiresAt) {
+        return hit.body;
+      }
+    }
     const url = `${this.baseUrl}${path}`;
-    return this.withRetries(async () => {
+    const body = await this.withRetries(async () => {
       const response = await this.fetchWithTimeout(url, {
         method: "GET",
         headers: { accept: "application/json" },
       });
-      const body = await response.text();
+      const responseBody = await response.text();
       if (!response.ok) {
-        throw new HttpError(response.status, body, url);
+        throw new HttpError(response.status, responseBody, url);
       }
-      return body;
+      return responseBody;
     });
+    if (cacheable) {
+      this.cache.set(path, { body, expiresAt: this.now() + this.cacheTtlMs });
+    }
+    return body;
   }
 
   private async withRetries<T>(operation: () => Promise<T>): Promise<T> {

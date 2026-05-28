@@ -11,6 +11,7 @@ Invalid values **never** crash the server. Each bad value emits a single warning
 | `SEED4J_BASE_URL` | `http://localhost:1339` | Base URL of the seed4j HTTP API. All tool calls hit `${SEED4J_BASE_URL}/api/…`. |
 | `SEED4J_TIMEOUT_MS` | `30000` | Per-request timeout in milliseconds. Must be a positive integer. Applies to every outbound HTTP call (GETs and the apply-patch POST). See [errors.md](errors.md#timeouterror-request-exceeded-the-per-call-timeout). |
 | `SEED4J_RETRIES` | `2` | Retry budget for idempotent GETs on `TimeoutError`, network errors, and HTTP 5xx. Must be a non-negative integer (0 disables retries). HTTP 4xx and the apply-patch POST are never retried. See [errors.md](errors.md#retries-on-transient-get-failures). |
+| `SEED4J_CACHE_TTL_MS` | `3600000` (1 hour) | TTL for the in-process catalogue cache covering `/api/modules`, `/api/modules-landscape`, and `/api/presets`. Must be a non-negative integer; set to `0` to disable caching (useful when iterating on seed4j itself). Errors are never cached. |
 | `SEED4J_AUTH_HEADER` | unset | Full `Authorization` header value sent on every outbound request, e.g. `Bearer abc.def`, `Basic dXNlcjpwYXNz`. Use this for any scheme other than bearer. |
 | `SEED4J_BEARER_TOKEN` | unset | Convenience shortcut: the server sends `Authorization: Bearer <value>`. Ignored if `SEED4J_AUTH_HEADER` is also set (a warning is emitted on stderr). |
 

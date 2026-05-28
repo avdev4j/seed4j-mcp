@@ -492,6 +492,186 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("catalogue cache", () => {
+    function cachingClient(opts: {
+      ttl: number;
+      now: () => number;
+    }) {
+      const local = mockFetcher();
+      const cached = new Seed4jClient(BASE_URL, local.fetcher, {
+        cacheTtlMs: opts.ttl,
+        now: opts.now,
+      });
+      return { ...local, client: cached };
+    }
+
+    it("serves a second listModules call from cache within the TTL", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk('{"categories":[]}');
+      await expect(local.client.listModules()).resolves.toBe('{"categories":[]}');
+      await expect(local.client.listModules()).resolves.toBe('{"categories":[]}');
+      expect(local.calls).toHaveLength(1);
+      local.assertDrained();
+    });
+
+    it("refetches once the TTL has expired", async () => {
+      let now = 0;
+      const local = cachingClient({ ttl: 60_000, now: () => now });
+      local.jsonOk('{"categories":["first"]}');
+      local.jsonOk('{"categories":["second"]}');
+      now = 1_000;
+      await expect(local.client.listModules()).resolves.toBe('{"categories":["first"]}');
+      now = 61_001;
+      await expect(local.client.listModules()).resolves.toBe('{"categories":["second"]}');
+      expect(local.calls).toHaveLength(2);
+      local.assertDrained();
+    });
+
+    it("lets searchModules benefit from the catalogue cache", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk(
+        JSON.stringify({
+          categories: [
+            {
+              name: "Build",
+              modules: [{ slug: "maven-java", description: "Maven build", tags: ["build"] }],
+            },
+          ],
+        }),
+      );
+      await local.client.searchModules("maven", 0);
+      await local.client.searchModules("maven", 0);
+      expect(local.calls).toHaveLength(1);
+      local.assertDrained();
+    });
+
+    it("caches /api/presets across getPresetDetails and applyPreset", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk(
+        JSON.stringify({
+          presets: [
+            { name: "Java Library with Maven", modules: [{ slug: "init" }, { slug: "maven-java" }] },
+          ],
+        }),
+      );
+      local.jsonOk('{"step":1}');
+      local.jsonOk('{"step":2}');
+
+      await local.client.getPresetDetails("Java Library with Maven");
+      await local.client.applyPreset("Java Library with Maven", "/tmp/app", {});
+
+      const presetsCalls = local.calls.filter((c) => c.url.endsWith("/api/presets"));
+      expect(presetsCalls).toHaveLength(1);
+      local.assertDrained();
+    });
+
+    it("caches /api/modules-landscape across getModuleDependencies repeats", async () => {
+      const landscape = JSON.stringify({
+        levels: [
+          {
+            elements: [
+              {
+                type: "MODULE",
+                slug: "init",
+                operation: "APPLY",
+                rank: "RANK_S",
+                dependencies: [],
+              },
+            ],
+          },
+          {
+            elements: [
+              {
+                type: "MODULE",
+                slug: "java-base",
+                operation: "APPLY",
+                rank: "RANK_B",
+                dependencies: [{ type: "MODULE", slug: "init" }],
+              },
+            ],
+          },
+        ],
+      });
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk(landscape);
+      await local.client.getModuleDependencies("java-base");
+      await local.client.getModuleDependencies("java-base");
+      expect(local.calls).toHaveLength(1);
+      local.assertDrained();
+    });
+
+    it("does not cache per-slug GETs like /api/modules/{slug}", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk('{"definitions":[]}');
+      local.jsonOk('{"definitions":[]}');
+      await local.client.getModuleDetails("maven-java");
+      await local.client.getModuleDetails("maven-java");
+      expect(local.calls).toHaveLength(2);
+      local.assertDrained();
+    });
+
+    it("clearCache() drops everything", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk('{"first":true}');
+      local.jsonOk('{"second":true}');
+      await local.client.listModules();
+      local.client.clearCache();
+      await local.client.listModules();
+      expect(local.calls).toHaveLength(2);
+      local.assertDrained();
+    });
+
+    it("clearCache(path) drops only that entry", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      local.jsonOk('{"categories":[]}');
+      local.jsonOk('{"presets":[]}');
+      local.jsonOk('{"categories":[]}');
+      await local.client.listModules();
+      await local.client.listPresets();
+      local.client.clearCache("/api/modules");
+      await local.client.listModules();
+      await local.client.listPresets();
+      const moduleCalls = local.calls.filter((c) => c.url.endsWith("/api/modules"));
+      const presetCalls = local.calls.filter((c) => c.url.endsWith("/api/presets"));
+      expect(moduleCalls).toHaveLength(2);
+      expect(presetCalls).toHaveLength(1);
+      local.assertDrained();
+    });
+
+    it("cacheTtlMs: 0 disables caching", async () => {
+      const local = cachingClient({ ttl: 0, now: () => 1_000 });
+      local.jsonOk('{"a":1}');
+      local.jsonOk('{"a":2}');
+      await local.client.listModules();
+      await local.client.listModules();
+      expect(local.calls).toHaveLength(2);
+      local.assertDrained();
+    });
+
+    it("does not cache failed responses", async () => {
+      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const responses = [
+        new Response("boom", { status: 503 }),
+        new Response("boom", { status: 503 }),
+        new Response("boom", { status: 503 }),
+        new Response('{"categories":[]}', { status: 200 }),
+      ];
+      const fetcher: FetchLike = vi.fn(async () => responses.shift()!);
+      const failing = new Seed4jClient(BASE_URL, fetcher, {
+        cacheTtlMs: 60_000,
+        retries: 2,
+        retryBaseDelayMs: 1,
+        sleep,
+        now: () => 1_000,
+      });
+
+      await expect(failing.listModules()).rejects.toBeInstanceOf(HttpError);
+      await expect(failing.listModules()).resolves.toBe('{"categories":[]}');
+      expect(fetcher).toHaveBeenCalledTimes(4);
+    });
+  });
+
   describe("authorization header", () => {
     it("sends Authorization on a GET when authHeader is set", async () => {
       mocks.jsonOk('{"categories":[]}');

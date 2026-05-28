@@ -97,12 +97,29 @@ describe("loadConfig", () => {
     expect(config.clientOptions.authHeader).toBeUndefined();
   });
 
+  it("parses SEED4J_CACHE_TTL_MS as a non-negative integer (0 disables)", () => {
+    const zero = loadConfig(env({ SEED4J_CACHE_TTL_MS: "0" }));
+    expect(zero.clientOptions.cacheTtlMs).toBe(0);
+    expect(zero.warnings).toEqual([]);
+
+    const oneMin = loadConfig(env({ SEED4J_CACHE_TTL_MS: "60000" }));
+    expect(oneMin.clientOptions.cacheTtlMs).toBe(60000);
+  });
+
+  it("warns and falls back when SEED4J_CACHE_TTL_MS is invalid", () => {
+    const config = loadConfig(env({ SEED4J_CACHE_TTL_MS: "forever" }));
+    expect(config.clientOptions.cacheTtlMs).toBeUndefined();
+    expect(config.warnings).toHaveLength(1);
+    expect(config.warnings[0]).toContain("SEED4J_CACHE_TTL_MS");
+  });
+
   it("combines all valid env vars into one clientOptions object", () => {
     const config = loadConfig(
       env({
         SEED4J_BASE_URL: "http://seed4j.example:8080",
         SEED4J_TIMEOUT_MS: "5000",
         SEED4J_RETRIES: "5",
+        SEED4J_CACHE_TTL_MS: "60000",
         SEED4J_BEARER_TOKEN: "abc.def",
       }),
     );
@@ -110,6 +127,7 @@ describe("loadConfig", () => {
     expect(config.clientOptions).toEqual({
       timeoutMs: 5000,
       retries: 5,
+      cacheTtlMs: 60000,
       authHeader: "Bearer abc.def",
     });
     expect(config.warnings).toEqual([]);

@@ -40,11 +40,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ## Catalogue performance
 
-### 5. In-memory cache for the module catalogue, landscape, and presets
+### ✅ 5. In-memory cache for the module catalogue, landscape, and presets
 - **What:** Cache the responses of `/api/modules`, `/api/modules-landscape`, and `/api/presets` with a short TTL inside `Seed4jClient`.
 - **Why:** `search_modules` re-fetches the full catalogue every call, and `get_module_dependencies` / `apply_preset` re-fetch on each use. These payloads are large and change rarely within a session.
 - **Where:** [src/client.ts](../src/client.ts).
 - **Done when:** Repeated calls within the TTL hit the cache (verified by counting fetch calls in a test); a TTL/`refresh` path exists to bust it.
+- **Shipped:** 2026-05-28 — three-key in-process cache with default 1 h TTL, configurable via `SEED4J_CACHE_TTL_MS` (`0` disables). `Seed4jClient.clearCache(path?)` busts. Errors are never cached. See [changelog.md](changelog.md#5--in-memory-cache-for-the-module-catalogue-landscape-and-presets).
 
 ---
 
