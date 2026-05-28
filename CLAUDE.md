@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo is a **side project of seed4j**, deliberately kept out of the main seed4j repository. Treat seed4j as an external service: this server talks to a running seed4j instance over HTTP, it does not embed seed4j as a library.
 
-Planned improvements are tracked in [docs/ROADMAP.md](docs/ROADMAP.md) as numbered features (1–16). Each entry has a What/Why/Where/Done-when spec so a single item can be picked up and implemented in isolation — consult it before starting new work.
+Planned improvements are tracked in [docs/ROADMAP.md](docs/ROADMAP.md) as numbered features (1–17). Each entry has a What/Why/Where/Done-when spec so a single item can be picked up and implemented in isolation — consult it before starting new work.
 
 ## Tech Stack
 

@@ -124,6 +124,16 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ---
 
+## Lifecycle management
+
+### 17. Remove an applied module and its files
+- **What:** Add a `remove_module` tool that reverses a previously-applied module: it computes the set of files seed4j installed for that module, returns a preview by default (paths to be deleted, plus any file that has been locally modified since install — typically business code added on top of the scaffold), and only deletes when called with an explicit `confirm: true`. On confirmation it removes those files, leaves any locally-modified file untouched unless `force: true` is set, and updates the project's applied-modules history so the module no longer appears in `get_project_status`. Mirrors the "apply" surface: input is `{ projectFolder, moduleSlug, confirm?, force? }`.
+- **Why:** Today a wrong module choice or an obsolete dependency has no clean undo. Developers end up reverting manually or starting the project from scratch. Exposing a scripted removal lets a dev tell the agent "drop module X" when it doesn't match expectations or is no longer used — and **forces the agent to surface the destructive intent before acting**, because the preview will flag any business code that lives inside the files seed4j scaffolded.
+- **Where:** [src/client.ts](../src/client.ts) (new methods: list the files an applied module touched, detect locally-modified files, delete + update the applied-modules record), [src/tools.ts](../src/tools.ts) (new tool with the preview-then-confirm shape), [tests/](../tests/) (clean removal, removal with user-modified files, no-op when the module isn't applied, refusal when `confirm` is missing). Depends on seed4j either exposing an "undo" / file-manifest endpoint or on the MCP server reconstructing the file list from the applied-modules record in the project folder — verify the live seed4j API before building.
+- **Done when:** Calling `remove_module` without `confirm: true` returns a structured preview (`{ filesToDelete, locallyModifiedFiles }`) and does **not** mutate disk; calling with `confirm: true` deletes only files whose content still matches the original install, refuses to touch locally-modified files unless `force: true` is set, and removes the module from the project's history so `get_project_status` reflects the change; behaviour is unit-tested for all three branches (preview, clean remove, modified-file refusal).
+
+---
+
 ## Notes
 - **Stack:** Node 20+ / TypeScript (ESM) using `@modelcontextprotocol/sdk` over STDIO + `zod` + native `fetch`. (Anything referring to a "Spring AI" implementation is stale — this is the TypeScript server.)
 - **Golden rule:** never write to stdout from anywhere but the MCP transport — it corrupts the framing and hangs the client.
