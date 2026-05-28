@@ -2,11 +2,15 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { Seed4jClient } from "./client.js";
+import { loadConfig } from "./config.js";
 import { createServer } from "./server.js";
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEED4J_BASE_URL ?? "http://localhost:1339";
-  const client = new Seed4jClient(baseUrl);
+  const { baseUrl, clientOptions, warnings } = loadConfig(process.env);
+  for (const warning of warnings) {
+    process.stderr.write(`seed4j-mcp: ${warning}\n`);
+  }
+  const client = new Seed4jClient(baseUrl, undefined, clientOptions);
   const server = createServer(client);
   const transport = new StdioServerTransport();
   await server.connect(transport);

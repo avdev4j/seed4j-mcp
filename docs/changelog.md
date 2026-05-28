@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #3 — Configurable client via env vars
+
+- **Shipped:** 2026-05-28
+- **User impact:** the server can now be tuned and authenticated through environment variables alone — no code changes required. `SEED4J_TIMEOUT_MS` and `SEED4J_RETRIES` override the defaults shipped in #1 and #2; `SEED4J_AUTH_HEADER` (or the convenience `SEED4J_BEARER_TOKEN`) injects an `Authorization` header on every outbound request, unlocking remote/secured seed4j instances. Invalid values warn on stderr and fall back to defaults — the server never fails to start because of a bad env var.
+- **API change:** `Seed4jClient` gains an `authHeader` option. New module [`src/config.ts`](../src/config.ts) exposes `loadConfig(env)` returning `{ baseUrl, clientOptions, warnings }`.
+- **Docs touched:** [overview.md](overview.md), [configuration.md](configuration.md), [clients.md](clients.md), [errors.md](errors.md).
+
 ### #2 — Retry with backoff on transient failures
 
 - **Shipped:** 2026-05-28

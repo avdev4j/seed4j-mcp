@@ -60,5 +60,4 @@ Env-driven configuration (`SEED4J_RETRIES`, plus the existing `SEED4J_TIMEOUT_MS
 
 ## Known gaps (tracked in the roadmap)
 
-- **Timeout / retries are not yet env-configurable** — defaults are hardcoded; `SEED4J_TIMEOUT_MS` and `SEED4J_RETRIES` land with #3.
 - **Raw error bodies** — long stack traces and HTML error pages from seed4j flow through unchanged (#4 will summarise and switch to `isError: true` results).

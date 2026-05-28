@@ -12,7 +12,8 @@
 
 | Layer | File | Responsibility |
 | --- | --- | --- |
-| Entry point | [src/index.ts](../src/index.ts) | Read env, build the client, wire the STDIO transport, connect the server. |
+| Entry point | [src/index.ts](../src/index.ts) | Load config from env, emit warnings on stderr, build the client, wire the STDIO transport, connect the server. |
+| Config | [src/config.ts](../src/config.ts) | Pure env → `{ baseUrl, clientOptions, warnings }` parser. No I/O. |
 | Server | [src/server.ts](../src/server.ts) | Construct the `McpServer` and register tools. |
 | Tools | [src/tools.ts](../src/tools.ts) | The MCP-facing surface — names, descriptions, zod schemas, handlers. |
 | Client | [src/client.ts](../src/client.ts) | HTTP calls into seed4j; the only layer that knows about `fetch`. |
@@ -34,7 +35,7 @@ These paths are inherited from the JHipster-Lite-style API. Verify them against 
 
 ## Reliability
 
-- **Per-request timeout.** Every outbound `fetch` is wrapped with an `AbortController` armed for a configurable timeout (default 30 s). When it fires, the request is aborted and the tool call rejects with a `TimeoutError` instead of stalling the MCP client — see [errors.md](errors.md).
-- **Retries on idempotent GETs.** GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/modules-landscape`, `/api/projects?path=…`) are retried up to `retries` times (default **2**, so up to 3 attempts) on `TimeoutError`, network errors, and HTTP 5xx responses. Backoff is capped exponential (default base 200 ms, cap 2 s). HTTP 4xx is **not** retried — those are deterministic. POSTs to `apply-patch` are **never** silently retried; an aborted apply could leave the project half-mutated, so retry is left to the agent.
-- **Env-driven configuration** of these knobs (`SEED4J_TIMEOUT_MS`, `SEED4J_RETRIES`) is tracked as roadmap #3.
+- **Per-request timeout.** Every outbound `fetch` is wrapped with an `AbortController` armed for a configurable timeout (default 30 s, override via `SEED4J_TIMEOUT_MS`). When it fires, the request is aborted and the tool call rejects with a `TimeoutError` instead of stalling the MCP client — see [errors.md](errors.md).
+- **Retries on idempotent GETs.** GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/modules-landscape`, `/api/projects?path=…`) are retried up to `retries` times (default **2**, override via `SEED4J_RETRIES`) on `TimeoutError`, network errors, and HTTP 5xx responses. Backoff is capped exponential. HTTP 4xx is **not** retried — those are deterministic. POSTs to `apply-patch` are **never** silently retried; an aborted apply could leave the project half-mutated, so retry is left to the agent.
+- **Authenticated seed4j.** When `SEED4J_AUTH_HEADER` (or the convenience `SEED4J_BEARER_TOKEN`) is set, every outbound request — GETs and POSTs — carries an `Authorization` header. See [configuration.md](configuration.md).
 - **Structured errors and caching** are not yet in place — see roadmap items #4 and #5.

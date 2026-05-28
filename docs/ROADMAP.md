@@ -22,11 +22,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** GETs retry up to N times then surface the last error; POSTs are never silently retried; behaviour is unit-tested.
 - **Shipped:** 2026-05-28 — `Seed4jClient` retries `TimeoutError` / network errors / HTTP 5xx on GETs (default 2 retries, capped exponential backoff). 4xx and POSTs are never silently retried. Env wiring (`SEED4J_RETRIES`) follows in #3. See [changelog.md](changelog.md#2--retry-with-backoff-on-transient-failures).
 
-### 3. Configurable client via env vars
+### ✅ 3. Configurable client via env vars
 - **What:** Read `SEED4J_TIMEOUT_MS`, `SEED4J_RETRIES`, and optional `SEED4J_AUTH_HEADER` / bearer token from the environment in [src/index.ts](../src/index.ts) and pass them into `Seed4jClient`.
 - **Why:** Different deployments (local vs. remote/secured seed4j) need different tuning without code changes.
 - **Where:** [src/index.ts](../src/index.ts), [src/client.ts](../src/client.ts) constructor.
 - **Done when:** Env vars are parsed with sane defaults and documented in README; depends conceptually on #1/#2.
+- **Shipped:** 2026-05-28 — new [src/config.ts](../src/config.ts) parses `SEED4J_TIMEOUT_MS`, `SEED4J_RETRIES`, `SEED4J_AUTH_HEADER`, and the convenience `SEED4J_BEARER_TOKEN`; invalid values warn on stderr and fall back to defaults. `Seed4jClient` injects `Authorization` on every request. See [changelog.md](changelog.md#3--configurable-client-via-env-vars).
 
 ### 4. Structured tool errors instead of thrown rejections
 - **What:** Catch errors in tool handlers and return `{ content: [...], isError: true }` with a concise, structured message (status, endpoint, hint) rather than letting them reject.

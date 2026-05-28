@@ -62,6 +62,7 @@ export interface Seed4jClientOptions {
   retryBaseDelayMs?: number;
   retryMaxDelayMs?: number;
   sleep?: SleepFn;
+  authHeader?: string;
 }
 
 export class Seed4jClient {
@@ -70,6 +71,7 @@ export class Seed4jClient {
   private readonly retryBaseDelayMs: number;
   private readonly retryMaxDelayMs: number;
   private readonly sleep: SleepFn;
+  private readonly authHeader: string | undefined;
 
   constructor(
     private readonly baseUrl: string,
@@ -89,6 +91,7 @@ export class Seed4jClient {
     this.retryMaxDelayMs = requestedMax > 0 ? requestedMax : DEFAULT_RETRY_MAX_DELAY_MS;
 
     this.sleep = options.sleep ?? defaultSleep;
+    this.authHeader = options.authHeader?.trim() || undefined;
   }
 
   listModules(): Promise<string> {
@@ -354,13 +357,17 @@ export class Seed4jClient {
   private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
     const method = (init.method ?? "GET").toUpperCase();
     const timeoutMs = this.timeoutMs;
+    const baseHeaders = (init.headers as Record<string, string> | undefined) ?? {};
+    const headers: Record<string, string> = this.authHeader
+      ? { ...baseHeaders, Authorization: this.authHeader }
+      : baseHeaders;
     return new Promise<Response>((resolve, reject) => {
       const controller = new AbortController();
       const timer = setTimeout(() => {
         controller.abort();
         reject(new TimeoutError(url, method, timeoutMs));
       }, timeoutMs);
-      this.fetcher(url, { ...init, signal: controller.signal })
+      this.fetcher(url, { ...init, headers, signal: controller.signal })
         .then((response) => {
           clearTimeout(timer);
           resolve(response);

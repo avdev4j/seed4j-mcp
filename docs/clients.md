@@ -33,10 +33,14 @@ claude mcp add seed4j --scope project -- npx -y seed4j-mcp
 claude mcp add seed4j --scope user -- npx -y seed4j-mcp
 ```
 
-Pass a custom seed4j URL with `--env`:
+Pass a custom seed4j URL — or any other [supported env var](configuration.md) — with `--env`:
 
 ```bash
-claude mcp add seed4j --env SEED4J_BASE_URL=http://localhost:7471 -- npx -y seed4j-mcp
+claude mcp add seed4j \
+  --env SEED4J_BASE_URL=https://seed4j.example.com \
+  --env SEED4J_BEARER_TOKEN=eyJhbGciOi... \
+  --env SEED4J_TIMEOUT_MS=60000 \
+  -- npx -y seed4j-mcp
 ```
 
 Verify it's wired up:
@@ -62,6 +66,8 @@ Point the client at the `npx` entrypoint in its MCP servers config:
   }
 }
 ```
+
+Add any of the [supported env vars](configuration.md) (timeout, retries, bearer token, …) to the `env` block.
 
 If you installed `seed4j-mcp` globally, swap `npx`/`-y seed4j-mcp` for `seed4j-mcp` directly.
 

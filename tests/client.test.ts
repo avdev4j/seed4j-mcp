@@ -492,6 +492,39 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("authorization header", () => {
+    it("sends Authorization on a GET when authHeader is set", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      const authed = new Seed4jClient(BASE_URL, mocks.fetcher, {
+        authHeader: "Bearer abc.def",
+      });
+      await authed.listModules();
+      expect(mocks.calls[0]?.headers?.Authorization).toBe("Bearer abc.def");
+    });
+
+    it("sends Authorization on the apply-patch POST when authHeader is set", async () => {
+      mocks.jsonOk('{"status":"ok"}');
+      const authed = new Seed4jClient(BASE_URL, mocks.fetcher, {
+        authHeader: "Basic dXNlcjpwYXNz",
+      });
+      await authed.applyModule("maven-java", "/tmp/app", {});
+      expect(mocks.calls[0]?.headers?.Authorization).toBe("Basic dXNlcjpwYXNz");
+    });
+
+    it("does not add Authorization when authHeader is omitted", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      await client.listModules();
+      expect(mocks.calls[0]?.headers?.Authorization).toBeUndefined();
+    });
+
+    it("trims and ignores a whitespace-only authHeader", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      const authed = new Seed4jClient(BASE_URL, mocks.fetcher, { authHeader: "   " });
+      await authed.listModules();
+      expect(mocks.calls[0]?.headers?.Authorization).toBeUndefined();
+    });
+  });
+
   describe("request timeouts", () => {
     it("rejects with TimeoutError when a GET never resolves", async () => {
       const hangingFetch: FetchLike = vi.fn(
