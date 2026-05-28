@@ -25,6 +25,13 @@ const optionalPropertiesSchema = propertiesSchema
   .optional()
   .describe("Module-specific properties as a JSON object. Omit when the module has no required properties.");
 
+const commitSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    "When true, seed4j runs `git commit` after applying the patch (one commit per module). Defaults to false. Set to true when the caller wants a clean per-feature history — e.g. when scaffolding a project end-to-end — and stays false for speculative or validation runs.",
+  );
+
 function text(body: string): ToolResult {
   return { content: [{ type: "text", text: body }] };
 }
@@ -111,9 +118,10 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
           .string()
           .describe("Absolute path to the existing project folder to mutate."),
         properties: optionalPropertiesSchema,
+        commit: commitSchema,
       },
-      handler: async ({ moduleSlug, projectFolder, properties }) =>
-        text(await client.applyModule(moduleSlug, projectFolder, properties ?? {})),
+      handler: async ({ moduleSlug, projectFolder, properties, commit }) =>
+        text(await client.applyModule(moduleSlug, projectFolder, properties ?? {}, commit ?? false)),
     },
     {
       name: "create_project",
@@ -128,9 +136,10 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         properties: propertiesSchema.describe(
           "Base project properties as a JSON object, e.g. {\"projectName\":\"My App\",\"baseName\":\"myapp\",\"nodePackageManager\":\"npm\"}.",
         ),
+        commit: commitSchema,
       },
-      handler: async ({ projectFolder, properties }) =>
-        text(await client.createProject(projectFolder, properties)),
+      handler: async ({ projectFolder, properties, commit }) =>
+        text(await client.createProject(projectFolder, properties, commit ?? false)),
     },
     {
       name: "validate_properties",
@@ -168,9 +177,10 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
           .describe(
             "Ordered steps, e.g. [{\"slug\":\"maven-java\",\"properties\":{}},{\"slug\":\"java-base\",\"properties\":{\"packageName\":\"com.example.app\"}}].",
           ),
+        commit: commitSchema,
       },
-      handler: async ({ projectFolder, steps }) =>
-        text(await client.applyModules(projectFolder, steps)),
+      handler: async ({ projectFolder, steps, commit }) =>
+        text(await client.applyModules(projectFolder, steps, commit ?? false)),
     },
     {
       name: "apply_preset",
@@ -186,9 +196,10 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         properties: propertiesSchema.describe(
           "Shared properties for every module in the preset, e.g. {\"projectName\":\"My App\",\"baseName\":\"myapp\",\"packageName\":\"com.example.app\"}.",
         ),
+        commit: commitSchema,
       },
-      handler: async ({ presetName, projectFolder, properties }) =>
-        text(await client.applyPreset(presetName, projectFolder, properties)),
+      handler: async ({ presetName, projectFolder, properties, commit }) =>
+        text(await client.applyPreset(presetName, projectFolder, properties, commit ?? false)),
     },
   ];
   return tools.map((tool) => ({

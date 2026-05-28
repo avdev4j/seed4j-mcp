@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #6 — Expose a `commit` option on apply tools
+
+- **Shipped:** 2026-05-28
+- **User impact:** every apply tool (`apply_module`, `create_project`, `apply_modules`, `apply_preset`) gains an optional `commit: boolean` input, default `false`. When set to `true`, seed4j runs `git commit` after applying each module — agents that scaffold a project end-to-end now have a one-line way to produce a clean per-feature git history. Existing callers see no change.
+- **API change:** `Seed4jClient.applyModule` / `createProject` / `applyModules` / `applyPreset` gain a trailing optional `commit = false` parameter. The flag flows into the apply-patch request body.
+- **Docs touched:** [tools.md](tools.md).
+
 ### #5 — In-memory cache for the module catalogue, landscape, and presets
 
 - **Shipped:** 2026-05-28

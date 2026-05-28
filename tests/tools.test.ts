@@ -141,16 +141,28 @@ describe("MCP tool registry", () => {
       projectFolder: "/tmp/app",
       properties: { packageName: "com.example.app", indent: 2 },
     });
-    expect(mock.applyModule).toHaveBeenCalledWith("maven-java", "/tmp/app", {
-      packageName: "com.example.app",
-      indent: 2,
-    });
+    expect(mock.applyModule).toHaveBeenCalledWith(
+      "maven-java",
+      "/tmp/app",
+      { packageName: "com.example.app", indent: 2 },
+      false,
+    );
   });
 
   it("apply_module defaults to an empty properties map when omitted", async () => {
     mock.applyModule.mockResolvedValue("{}");
     await invoke(client, "apply_module", { moduleSlug: "init", projectFolder: "/tmp/app" });
-    expect(mock.applyModule).toHaveBeenCalledWith("init", "/tmp/app", {});
+    expect(mock.applyModule).toHaveBeenCalledWith("init", "/tmp/app", {}, false);
+  });
+
+  it("apply_module forwards commit: true when set", async () => {
+    mock.applyModule.mockResolvedValue("{}");
+    await invoke(client, "apply_module", {
+      moduleSlug: "maven-java",
+      projectFolder: "/tmp/app",
+      commit: true,
+    });
+    expect(mock.applyModule).toHaveBeenCalledWith("maven-java", "/tmp/app", {}, true);
   });
 
   it("create_project parses properties and delegates", async () => {
@@ -159,7 +171,17 @@ describe("MCP tool registry", () => {
       projectFolder: "/tmp/app",
       properties: { baseName: "myapp" },
     });
-    expect(mock.createProject).toHaveBeenCalledWith("/tmp/app", { baseName: "myapp" });
+    expect(mock.createProject).toHaveBeenCalledWith("/tmp/app", { baseName: "myapp" }, false);
+  });
+
+  it("create_project forwards commit: true when set", async () => {
+    mock.createProject.mockResolvedValue("{}");
+    await invoke(client, "create_project", {
+      projectFolder: "/tmp/app",
+      properties: { baseName: "myapp" },
+      commit: true,
+    });
+    expect(mock.createProject).toHaveBeenCalledWith("/tmp/app", { baseName: "myapp" }, true);
   });
 
   it("validate_properties forwards properties to the client", async () => {
@@ -178,7 +200,14 @@ describe("MCP tool registry", () => {
       { slug: "maven-java", properties: {} },
     ];
     await invoke(client, "apply_modules", { projectFolder: "/tmp/app", steps });
-    expect(mock.applyModules).toHaveBeenCalledWith("/tmp/app", steps);
+    expect(mock.applyModules).toHaveBeenCalledWith("/tmp/app", steps, false);
+  });
+
+  it("apply_modules forwards commit: true to every step", async () => {
+    mock.applyModules.mockResolvedValue("{}");
+    const steps = [{ slug: "init", properties: {} }];
+    await invoke(client, "apply_modules", { projectFolder: "/tmp/app", steps, commit: true });
+    expect(mock.applyModules).toHaveBeenCalledWith("/tmp/app", steps, true);
   });
 
   it("apply_preset forwards the shared properties map", async () => {
@@ -192,6 +221,23 @@ describe("MCP tool registry", () => {
       "Java Library with Maven",
       "/tmp/app",
       { packageName: "com.example.app" },
+      false,
+    );
+  });
+
+  it("apply_preset forwards commit: true to every step", async () => {
+    mock.applyPreset.mockResolvedValue("{}");
+    await invoke(client, "apply_preset", {
+      presetName: "Java Library with Maven",
+      projectFolder: "/tmp/app",
+      properties: {},
+      commit: true,
+    });
+    expect(mock.applyPreset).toHaveBeenCalledWith(
+      "Java Library with Maven",
+      "/tmp/app",
+      {},
+      true,
     );
   });
 

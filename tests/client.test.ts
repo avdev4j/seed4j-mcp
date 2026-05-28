@@ -280,6 +280,12 @@ describe("Seed4jClient", () => {
         parameters: { packageName: "com.example.app" },
       });
     });
+
+    it("forwards commit: true into the apply-patch body", async () => {
+      mocks.jsonOk('{"status":"ok"}');
+      await client.applyModule("maven-java", "/tmp/app", {}, true);
+      expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
+    });
   });
 
   describe("applyModules", () => {
@@ -322,6 +328,21 @@ describe("Seed4jClient", () => {
     it("rejects an empty step list", async () => {
       await expect(client.applyModules("/tmp/app", [])).rejects.toThrow();
     });
+
+    it("forwards commit: true to every step's POST body", async () => {
+      mocks.jsonOk('{"step":1}');
+      mocks.jsonOk('{"step":2}');
+      await client.applyModules(
+        "/tmp/app",
+        [
+          { slug: "init", properties: {} },
+          { slug: "maven-java", properties: {} },
+        ],
+        true,
+      );
+      expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
+      expect(JSON.parse(mocks.calls[1]?.body ?? "{}").commit).toBe(true);
+    });
   });
 
   describe("applyPreset", () => {
@@ -349,6 +370,23 @@ describe("Seed4jClient", () => {
         packageName: "com.example.app",
       });
     });
+
+    it("forwards commit: true to every preset module", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          presets: [
+            { name: "Java Library with Maven", modules: [{ slug: "init" }, { slug: "maven-java" }] },
+          ],
+        }),
+      );
+      mocks.jsonOk('{"step":1}');
+      mocks.jsonOk('{"step":2}');
+
+      await client.applyPreset("Java Library with Maven", "/tmp/app", {}, true);
+
+      expect(JSON.parse(mocks.calls[1]?.body ?? "{}").commit).toBe(true);
+      expect(JSON.parse(mocks.calls[2]?.body ?? "{}").commit).toBe(true);
+    });
   });
 
   describe("createProject", () => {
@@ -362,6 +400,16 @@ describe("Seed4jClient", () => {
       const info = await stat(target);
       expect(info.isDirectory()).toBe(true);
       expect(mocks.calls[0]?.url).toBe(`${BASE_URL}/api/modules/init/apply-patch`);
+    });
+
+    it("forwards commit: true to the init apply-patch body", async () => {
+      const base = await mkdtemp(path.join(tmpdir(), "seed4j-mcp-"));
+      const target = path.join(base, "proj");
+      mocks.jsonOk('{"status":"ok"}');
+
+      await client.createProject(target, {}, true);
+
+      expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
     });
   });
 

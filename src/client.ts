@@ -189,21 +189,34 @@ export class Seed4jClient {
     return JSON.stringify({ slug: moduleSlug, valid: errors.length === 0, errors, warnings });
   }
 
-  applyModule(moduleSlug: string, projectFolder: string, properties: Properties): Promise<string> {
+  applyModule(
+    moduleSlug: string,
+    projectFolder: string,
+    properties: Properties,
+    commit = false,
+  ): Promise<string> {
     const body = {
       projectFolder,
-      commit: false,
+      commit,
       parameters: properties ?? {},
     };
     return this.postJson(`/api/modules/${encodeURIComponent(moduleSlug)}/apply-patch`, body);
   }
 
-  async createProject(projectFolder: string, properties: Properties): Promise<string> {
+  async createProject(
+    projectFolder: string,
+    properties: Properties,
+    commit = false,
+  ): Promise<string> {
     await mkdir(projectFolder, { recursive: true });
-    return this.applyModule("init", projectFolder, properties);
+    return this.applyModule("init", projectFolder, properties, commit);
   }
 
-  async applyModules(projectFolder: string, steps: ApplyStep[]): Promise<string> {
+  async applyModules(
+    projectFolder: string,
+    steps: ApplyStep[],
+    commit = false,
+  ): Promise<string> {
     if (!steps || steps.length === 0) {
       throw new Error("At least one module step is required");
     }
@@ -223,7 +236,7 @@ export class Seed4jClient {
         continue;
       }
       try {
-        const response = await this.applyModule(slug, projectFolder, props);
+        const response = await this.applyModule(slug, projectFolder, props, commit);
         applied.push({ slug, response });
       } catch (error) {
         if (error instanceof HttpError) {
@@ -243,7 +256,12 @@ export class Seed4jClient {
     });
   }
 
-  async applyPreset(presetName: string, projectFolder: string, properties: Properties): Promise<string> {
+  async applyPreset(
+    presetName: string,
+    projectFolder: string,
+    properties: Properties,
+    commit = false,
+  ): Promise<string> {
     const preset = JSON.parse(await this.getPresetDetails(presetName)) as {
       modules?: Array<{ slug?: string }>;
     };
@@ -257,7 +275,7 @@ export class Seed4jClient {
     if (steps.length === 0) {
       throw new Error(`Preset has no modules: ${presetName}`);
     }
-    return this.applyModules(projectFolder, steps);
+    return this.applyModules(projectFolder, steps, commit);
   }
 
   async getProjectStatus(projectFolder: string): Promise<string> {

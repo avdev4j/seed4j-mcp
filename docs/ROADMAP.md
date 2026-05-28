@@ -51,11 +51,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ## Tool capabilities
 
-### 6. Expose a `commit` option on apply tools
+### ✅ 6. Expose a `commit` option on apply tools
 - **What:** Make `commit` (currently hardcoded `false` in `applyModule`) an optional input on `apply_module`, `apply_modules`, `apply_preset`, and `create_project`.
 - **Why:** seed4j can git-commit after applying a patch; agents that scaffold a project may want each step committed for a clean history.
 - **Where:** [src/client.ts](../src/client.ts) `applyModule`, [src/tools.ts](../src/tools.ts) schemas.
 - **Done when:** `commit` flag flows through to the apply-patch body and defaults to `false`; tested.
+- **Shipped:** 2026-05-28 — every apply tool grows an optional `commit: boolean` (default `false`) that flows into the seed4j apply-patch body. Single top-level flag on the multi-step tools (no per-step overrides). See [changelog.md](changelog.md#6--expose-a-commit-option-on-apply-tools).
 
 ### 7. Richer `validate_properties` (ENUM, regex/pattern, defaults)
 - **What:** Extend `checkType` to validate `ENUM` (value in allowed set), pattern/regex constraints if seed4j exposes them, and report which mandatory keys would fall back to a default.

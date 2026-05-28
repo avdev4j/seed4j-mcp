@@ -47,24 +47,28 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 ## Project mutation (writes)
 
 ### `create_project`
-- **Input:** `projectFolder: string`, `properties: Record<string, unknown>`.
-- **Behaviour:** `mkdir -p` the folder, then `apply_module("init", folder, properties)`.
+- **Input:** `projectFolder: string`, `properties: Record<string, unknown>`, `commit?: boolean` (default `false`).
+- **Behaviour:** `mkdir -p` the folder, then `apply_module("init", folder, properties, commit)`.
 - **Output:** the seed4j apply-patch response for `init`.
 
 ### `apply_module`
-- **Input:** `moduleSlug: string`, `projectFolder: string`, `properties?: Record<string, unknown>`.
-- **Behaviour:** POST `/api/modules/{slug}/apply-patch` with `{ projectFolder, commit: false, parameters }`. `commit` is **hardcoded** today (roadmap item 6 makes it configurable).
+- **Input:** `moduleSlug: string`, `projectFolder: string`, `properties?: Record<string, unknown>`, `commit?: boolean` (default `false`).
+- **Behaviour:** POST `/api/modules/{slug}/apply-patch` with `{ projectFolder, commit, parameters }`. When `commit: true`, seed4j runs `git commit` after applying the patch — one commit per module.
 - **Output:** the raw apply-patch response.
 
 ### `apply_modules`
-- **Input:** `projectFolder: string`, `steps: [{ slug, properties? }]`.
-- **Behaviour:** apply each step in order, stopping at the first failure.
+- **Input:** `projectFolder: string`, `steps: [{ slug, properties? }]`, `commit?: boolean` (default `false`).
+- **Behaviour:** apply each step in order, stopping at the first failure. `commit` is applied uniformly to every step in the batch.
 - **Output:** `{ projectFolder, appliedCount, applied, failure, remaining }`.
 
 ### `apply_preset`
-- **Input:** `presetName: string`, `projectFolder: string`, `properties: Record<string, unknown>`.
-- **Behaviour:** resolve the preset, then apply every module in order with the **same** shared properties.
+- **Input:** `presetName: string`, `projectFolder: string`, `properties: Record<string, unknown>`, `commit?: boolean` (default `false`).
+- **Behaviour:** resolve the preset, then apply every module in order with the **same** shared properties. `commit` is applied uniformly to every module in the preset (one commit per module when `true`).
 - **Output:** identical shape to `apply_modules`.
+
+#### When to set `commit: true`
+
+Set `commit: true` when scaffolding a project end-to-end and the caller wants a **clean per-feature git history** (one commit per applied module — easy to bisect, easy to revert one step). Keep the default `false` for speculative or validation runs, where rolling back is simpler without intermediate commits. Per-step `commit` overrides inside `apply_modules` / `apply_preset` are not exposed — the flag is a single top-level choice.
 
 ## Not yet exposed
 
