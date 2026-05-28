@@ -41,8 +41,13 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 
 ### `validate_properties`
 - **Input:** `moduleSlug: string`, `properties: Record<string, unknown>`.
-- **Output:** `{ slug, valid, errors, warnings }`. Today the type checker handles `STRING`, `INTEGER` (number or numeric string), and `BOOLEAN`. Missing mandatory keys are errors; unknown keys are warnings. Enum/regex validation is not yet implemented (roadmap item 7).
-- **When to use:** dry-run before `apply_module` to surface mistyped or missing inputs without mutating the project.
+- **Output:** `{ slug, valid, errors, warnings, defaultsApplied }`.
+  - **Type checks:** `STRING` (any string), `INTEGER` (number or numeric string), `BOOLEAN`, and `ENUM` (value must appear in the schema's `enumValues` / `values` / `acceptableValues` list — first present wins).
+  - **Pattern check:** when a definition declares a `pattern`, the value (stringified) must match the regex. An unparseable pattern is silently skipped — no false errors.
+  - **Errors:** type mismatches, ENUM violations (with the allowed set inlined), pattern violations (with the pattern source inlined), and **mandatory keys missing with no declared default**.
+  - **Warnings:** properties the caller supplied that aren't declared in the schema.
+  - **`defaultsApplied`:** keys the caller didn't supply but the schema declares a default for (`defaultValue` or `default`). A mandatory key in this state is **not** an error — seed4j will fall back to the default at apply time. Each entry is `{ key, default }`.
+- **When to use:** dry-run before `apply_module` to surface mistyped, missing, or constraint-violating inputs without mutating the project — and to find out which defaults will kick in.
 
 ## Project mutation (writes)
 

@@ -54,6 +54,23 @@ interface ValidationIssue {
   issue: string;
 }
 
+interface DefaultApplied {
+  key: string;
+  default: unknown;
+}
+
+interface PropertyDefinition {
+  key: string;
+  type?: string;
+  mandatory?: boolean;
+  enumValues?: unknown;
+  values?: unknown;
+  acceptableValues?: unknown;
+  pattern?: string;
+  default?: unknown;
+  defaultValue?: unknown;
+}
+
 interface AppliedEntry {
   slug: string;
   response: string;
@@ -156,11 +173,12 @@ export class Seed4jClient {
 
   async validateProperties(moduleSlug: string, properties: Properties): Promise<string> {
     const schema = JSON.parse(await this.getModuleDetails(moduleSlug)) as {
-      definitions?: Array<{ key: string; type?: string; mandatory?: boolean }>;
+      definitions?: PropertyDefinition[];
     };
     const safe = properties ?? {};
     const errors: ValidationIssue[] = [];
     const warnings: ValidationIssue[] = [];
+    const defaultsApplied: DefaultApplied[] = [];
     const knownKeys = new Set<string>();
 
     for (const definition of schema.definitions ?? []) {
@@ -168,13 +186,17 @@ export class Seed4jClient {
       knownKeys.add(key);
       const type = definition.type ?? "STRING";
       const mandatory = !!definition.mandatory;
+      const defaultValue = readDefault(definition);
+
       if (!Object.prototype.hasOwnProperty.call(safe, key)) {
-        if (mandatory) {
+        if (defaultValue.present) {
+          defaultsApplied.push({ key, default: defaultValue.value });
+        } else if (mandatory) {
           errors.push({ key, issue: `missing mandatory property (type ${type})` });
         }
         continue;
       }
-      const issue = checkType(type, safe[key]);
+      const issue = checkValue(definition, safe[key]);
       if (issue) {
         errors.push({ key, issue });
       }
@@ -186,7 +208,13 @@ export class Seed4jClient {
       }
     }
 
-    return JSON.stringify({ slug: moduleSlug, valid: errors.length === 0, errors, warnings });
+    return JSON.stringify({
+      slug: moduleSlug,
+      valid: errors.length === 0,
+      errors,
+      warnings,
+      defaultsApplied,
+    });
   }
 
   applyModule(
@@ -450,20 +478,71 @@ function isRetryableGetError(error: unknown): boolean {
   return error instanceof Error;
 }
 
-function checkType(type: string, value: unknown): string | null {
+function checkValue(definition: PropertyDefinition, value: unknown): string | null {
   if (value === null || value === undefined) {
     return "value is null";
   }
+  const type = definition.type ?? "STRING";
   switch (type) {
-    case "STRING":
-      return typeof value === "string" ? null : `expected STRING, got ${typeName(value)}`;
+    case "STRING": {
+      if (typeof value !== "string") {
+        return `expected STRING, got ${typeName(value)}`;
+      }
+      return checkPattern(definition, value);
+    }
     case "INTEGER":
-      return isInteger(value) ? null : `expected INTEGER, got ${typeName(value)} (${String(value)})`;
+      return isInteger(value)
+        ? checkPattern(definition, String(value))
+        : `expected INTEGER, got ${typeName(value)} (${String(value)})`;
     case "BOOLEAN":
       return typeof value === "boolean" ? null : `expected BOOLEAN, got ${typeName(value)}`;
+    case "ENUM":
+      return checkEnum(definition, value);
     default:
       return null;
   }
+}
+
+function checkEnum(definition: PropertyDefinition, value: unknown): string | null {
+  const allowed = readEnumValues(definition);
+  if (allowed === null) return null;
+  const asString = typeof value === "string" ? value : String(value);
+  if (allowed.includes(asString)) return null;
+  return `expected one of [${allowed.join(", ")}], got '${asString}'`;
+}
+
+function checkPattern(definition: PropertyDefinition, value: string): string | null {
+  const pattern = readPattern(definition);
+  if (pattern === null) return null;
+  if (pattern.test(value)) return null;
+  return `value '${value}' does not match pattern ${pattern.source}`;
+}
+
+function readEnumValues(definition: PropertyDefinition): string[] | null {
+  const candidate = definition.enumValues ?? definition.values ?? definition.acceptableValues;
+  if (!Array.isArray(candidate)) return null;
+  const allowed = candidate.filter((item): item is string => typeof item === "string");
+  return allowed.length > 0 ? allowed : null;
+}
+
+function readPattern(definition: PropertyDefinition): RegExp | null {
+  const raw = definition.pattern;
+  if (typeof raw !== "string" || raw.length === 0) return null;
+  try {
+    return new RegExp(raw);
+  } catch {
+    return null;
+  }
+}
+
+function readDefault(definition: PropertyDefinition): { present: boolean; value: unknown } {
+  if (Object.prototype.hasOwnProperty.call(definition, "defaultValue")) {
+    return { present: true, value: definition.defaultValue };
+  }
+  if (Object.prototype.hasOwnProperty.call(definition, "default")) {
+    return { present: true, value: definition.default };
+  }
+  return { present: false, value: undefined };
 }
 
 function isInteger(value: unknown): boolean {

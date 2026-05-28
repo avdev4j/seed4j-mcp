@@ -260,6 +260,183 @@ describe("Seed4jClient", () => {
       const result = JSON.parse(await client.validateProperties("init", { indentSize: "4" }));
       expect(result.valid).toBe(true);
     });
+
+    it("accepts an ENUM value present in enumValues", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            { key: "buildTool", mandatory: true, type: "ENUM", enumValues: ["MAVEN", "GRADLE"] },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(
+        await client.validateProperties("init", { buildTool: "MAVEN" }),
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("rejects an ENUM value not in the allowed set and lists the allowed values", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            { key: "buildTool", mandatory: true, type: "ENUM", enumValues: ["MAVEN", "GRADLE"] },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(
+        await client.validateProperties("init", { buildTool: "sbt" }),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].key).toBe("buildTool");
+      expect(result.errors[0].issue).toContain("MAVEN");
+      expect(result.errors[0].issue).toContain("GRADLE");
+      expect(result.errors[0].issue).toContain("sbt");
+    });
+
+    it("supports the alternate 'values' field name for ENUM", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [{ key: "language", type: "ENUM", values: ["en", "fr"] }],
+        }),
+      );
+
+      const okResult = JSON.parse(
+        await client.validateProperties("init", { language: "fr" }),
+      );
+      expect(okResult.valid).toBe(true);
+    });
+
+    it("rejects a STRING value that does not match its pattern", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            {
+              key: "packageName",
+              mandatory: true,
+              type: "STRING",
+              pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+            },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(
+        await client.validateProperties("init", { packageName: "Foo Bar" }),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].issue).toContain("pattern");
+      expect(result.errors[0].issue).toContain("Foo Bar");
+    });
+
+    it("accepts a STRING value that matches its pattern", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            {
+              key: "packageName",
+              mandatory: true,
+              type: "STRING",
+              pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+            },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(
+        await client.validateProperties("init", { packageName: "com.example.app" }),
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("silently skips an unparseable pattern (no false error)", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            {
+              key: "label",
+              mandatory: true,
+              type: "STRING",
+              pattern: "[invalid(regex",
+            },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(
+        await client.validateProperties("init", { label: "anything goes" }),
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("records defaultsApplied for an optional missing key with a default", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [{ key: "indentSize", type: "INTEGER", default: 2 }],
+        }),
+      );
+
+      const result = JSON.parse(await client.validateProperties("init", {}));
+      expect(result.valid).toBe(true);
+      expect(result.defaultsApplied).toEqual([{ key: "indentSize", default: 2 }]);
+    });
+
+    it("records defaultsApplied — not errors — for a mandatory missing key with a default", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            { key: "javaVersion", mandatory: true, type: "STRING", defaultValue: "21" },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(await client.validateProperties("init", {}));
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.defaultsApplied).toEqual([{ key: "javaVersion", default: "21" }]);
+    });
+
+    it("keeps mandatory missing + no default as an error", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [{ key: "packageName", mandatory: true, type: "STRING" }],
+        }),
+      );
+
+      const result = JSON.parse(await client.validateProperties("init", {}));
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].key).toBe("packageName");
+      expect(result.defaultsApplied).toEqual([]);
+    });
+
+    it("populates errors, warnings, and defaultsApplied together", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            { key: "buildTool", mandatory: true, type: "ENUM", enumValues: ["MAVEN", "GRADLE"] },
+            { key: "indentSize", type: "INTEGER", default: 2 },
+            { key: "packageName", mandatory: true, type: "STRING" },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(
+        await client.validateProperties("init", {
+          buildTool: "sbt",
+          packageName: "com.example.app",
+          rogue: true,
+        }),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].key).toBe("buildTool");
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0].key).toBe("rogue");
+      expect(result.defaultsApplied).toEqual([{ key: "indentSize", default: 2 }]);
+    });
   });
 
   describe("applyModule", () => {

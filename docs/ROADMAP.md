@@ -58,11 +58,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** `commit` flag flows through to the apply-patch body and defaults to `false`; tested.
 - **Shipped:** 2026-05-28 — every apply tool grows an optional `commit: boolean` (default `false`) that flows into the seed4j apply-patch body. Single top-level flag on the multi-step tools (no per-step overrides). See [changelog.md](changelog.md#6--expose-a-commit-option-on-apply-tools).
 
-### 7. Richer `validate_properties` (ENUM, regex/pattern, defaults)
+### ✅ 7. Richer `validate_properties` (ENUM, regex/pattern, defaults)
 - **What:** Extend `checkType` to validate `ENUM` (value in allowed set), pattern/regex constraints if seed4j exposes them, and report which mandatory keys would fall back to a default.
 - **Why:** Current validation only covers STRING/INTEGER/BOOLEAN; agents get false "valid" results for enum/pattern fields.
 - **Where:** [src/client.ts](../src/client.ts) `validateProperties` / `checkType`.
 - **Done when:** Enum/pattern violations appear in `errors`; behaviour matches seed4j's own schema; tested against representative module schemas.
+- **Shipped:** 2026-05-28 — ENUM (allowed-set check with the values inlined in the error), pattern (regex with the source inlined in the error, unparseable regex silently skipped), and `defaultsApplied: [{ key, default }]` in the response. Mandatory + missing + default-present is now informational instead of an error. Field-name detection is defensive (`enumValues` / `values` / `acceptableValues`, `defaultValue` / `default`) pending #15. See [changelog.md](changelog.md#7--richer-validate_properties-enum-pattern-defaults).
 
 ### 8. Connectivity / health-check tool
 - **What:** Add a `ping_seed4j` (or `health`) tool that hits a lightweight endpoint and reports reachability, base URL, and seed4j version if available.

@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #7 — Richer `validate_properties` (ENUM, pattern, defaults)
+
+- **Shipped:** 2026-05-28
+- **User impact:** `validate_properties` now catches enum and pattern violations that previously passed silently, and surfaces the schema's default values so the agent knows exactly which fallbacks will apply at `apply_module` time. The response payload grows a `defaultsApplied: [{ key, default }]` array; a mandatory key that's missing but has a declared default is **no longer an error** — it's recorded as a default-to-be-applied. Errors stay errors; `valid` is still `errors.length === 0`.
+- **API change:** none for the tool input; the response shape gains one field. Agents that already parse `errors` / `warnings` keep working; agents that look at `defaultsApplied` get new value.
+- **Docs touched:** [tools.md](tools.md).
+
 ### #6 — Expose a `commit` option on apply tools
 
 - **Shipped:** 2026-05-28
