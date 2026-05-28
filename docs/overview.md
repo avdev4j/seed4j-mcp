@@ -31,3 +31,8 @@ These paths are inherited from the JHipster-Lite-style API. Verify them against 
 | GET | `/api/modules-landscape` | `get_module_dependencies` |
 
 `create_project` is **not** a dedicated endpoint: it `mkdir`s the target folder locally and then applies the `init` module via `apply-patch`.
+
+## Reliability
+
+- **Per-request timeout.** Every outbound `fetch` is wrapped with an `AbortController` armed for a configurable timeout (default 30 s). When it fires, the request is aborted and the tool call rejects with a `TimeoutError` instead of stalling the MCP client — see [errors.md](errors.md). Env-driven configuration of the value is tracked as roadmap #3.
+- **Retries, structured errors, caching** are not yet in place — see roadmap items #2, #4, #5.

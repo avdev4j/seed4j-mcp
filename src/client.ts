@@ -20,6 +20,19 @@ export class HttpError extends Error {
   }
 }
 
+export class TimeoutError extends Error {
+  constructor(
+    readonly url: string,
+    readonly method: string,
+    readonly timeoutMs: number,
+  ) {
+    super(`seed4j request timed out after ${timeoutMs}ms: ${method} ${url}`);
+    this.name = "TimeoutError";
+  }
+}
+
+export const DEFAULT_TIMEOUT_MS = 30_000;
+
 interface ValidationIssue {
   key: string;
   issue: string;
@@ -36,11 +49,21 @@ interface FailureEntry {
   body: string;
 }
 
+export interface Seed4jClientOptions {
+  timeoutMs?: number;
+}
+
 export class Seed4jClient {
+  private readonly timeoutMs: number;
+
   constructor(
     private readonly baseUrl: string,
     private readonly fetcher: FetchLike = fetch,
-  ) {}
+    options: Seed4jClientOptions = {},
+  ) {
+    const requested = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.timeoutMs = requested > 0 ? requested : DEFAULT_TIMEOUT_MS;
+  }
 
   listModules(): Promise<string> {
     return this.getText("/api/modules");
@@ -179,7 +202,7 @@ export class Seed4jClient {
 
   async getProjectStatus(projectFolder: string): Promise<string> {
     const url = `${this.baseUrl}/api/projects?path=${encodeURIComponent(projectFolder)}`;
-    const response = await this.fetcher(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: "GET",
       headers: { accept: "application/json" },
     });
@@ -253,7 +276,7 @@ export class Seed4jClient {
 
   private async getText(path: string): Promise<string> {
     const url = `${this.baseUrl}${path}`;
-    const response = await this.fetcher(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: "GET",
       headers: { accept: "application/json" },
     });
@@ -266,7 +289,7 @@ export class Seed4jClient {
 
   private async postJson(path: string, payload: unknown): Promise<string> {
     const url = `${this.baseUrl}${path}`;
-    const response = await this.fetcher(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify(payload),
@@ -276,6 +299,31 @@ export class Seed4jClient {
       throw new HttpError(response.status, body, url);
     }
     return body;
+  }
+
+  private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    const method = (init.method ?? "GET").toUpperCase();
+    const timeoutMs = this.timeoutMs;
+    return new Promise<Response>((resolve, reject) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort();
+        reject(new TimeoutError(url, method, timeoutMs));
+      }, timeoutMs);
+      this.fetcher(url, { ...init, signal: controller.signal })
+        .then((response) => {
+          clearTimeout(timer);
+          resolve(response);
+        })
+        .catch((error: unknown) => {
+          clearTimeout(timer);
+          if (controller.signal.aborted) {
+            reject(new TimeoutError(url, method, timeoutMs));
+            return;
+          }
+          reject(error as Error);
+        });
+    });
   }
 }
 

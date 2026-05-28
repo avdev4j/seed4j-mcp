@@ -16,7 +16,7 @@ These come from [ROADMAP.md](ROADMAP.md) and are listed here so operators can pl
 
 | Variable | Roadmap | Purpose |
 | --- | --- | --- |
-| `SEED4J_TIMEOUT_MS` | #1, #3 | Per-request timeout for HTTP calls into seed4j. |
+| `SEED4J_TIMEOUT_MS` | #3 | Override the default 30 s per-request timeout (already enforced in code, env wiring still pending). |
 | `SEED4J_RETRIES` | #2, #3 | Number of retries on transient GET failures. |
 | `SEED4J_AUTH_HEADER` / bearer | #3 | Auth header forwarded to seed4j. |
 | `SEED4J_LOG_FILE` | #13 | Path for file-based debug logging (stdout is off-limits). |

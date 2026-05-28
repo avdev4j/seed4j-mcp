@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HttpError, Seed4jClient, type FetchLike } from "../src/client.js";
+import { HttpError, Seed4jClient, TimeoutError, type FetchLike } from "../src/client.js";
 
 const BASE_URL = "http://test";
 
@@ -362,6 +362,62 @@ describe("Seed4jClient", () => {
       const info = await stat(target);
       expect(info.isDirectory()).toBe(true);
       expect(mocks.calls[0]?.url).toBe(`${BASE_URL}/api/modules/init/apply-patch`);
+    });
+  });
+
+  describe("request timeouts", () => {
+    it("rejects with TimeoutError when a GET never resolves", async () => {
+      const hangingFetch: FetchLike = vi.fn(
+        (_input, init) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          }),
+      );
+      const fastClient = new Seed4jClient(BASE_URL, hangingFetch, { timeoutMs: 20 });
+
+      const error = await fastClient.listModules().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(TimeoutError);
+      const timeoutError = error as TimeoutError;
+      expect(timeoutError.url).toBe(`${BASE_URL}/api/modules`);
+      expect(timeoutError.method).toBe("GET");
+      expect(timeoutError.timeoutMs).toBe(20);
+    });
+
+    it("rejects with TimeoutError on a hanging POST and reports the method", async () => {
+      const hangingFetch: FetchLike = vi.fn(
+        (_input, init) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          }),
+      );
+      const fastClient = new Seed4jClient(BASE_URL, hangingFetch, { timeoutMs: 20 });
+
+      const error = await fastClient
+        .applyModule("maven-java", "/tmp/app", {})
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(TimeoutError);
+      expect((error as TimeoutError).method).toBe("POST");
+    });
+
+    it("does not fire the timeout when the response is fast", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      const fastClient = new Seed4jClient(BASE_URL, mocks.fetcher, { timeoutMs: 10_000 });
+      await expect(fastClient.listModules()).resolves.toBe('{"categories":[]}');
+    });
+
+    it("propagates the abort signal to fetch", async () => {
+      let observedSignal: AbortSignal | undefined;
+      const captureFetch: FetchLike = vi.fn(async (_input, init) => {
+        observedSignal = init?.signal ?? undefined;
+        return new Response('{"categories":[]}', { status: 200 });
+      });
+      const observed = new Seed4jClient(BASE_URL, captureFetch);
+      await observed.listModules();
+      expect(observedSignal).toBeInstanceOf(AbortSignal);
     });
   });
 
