@@ -29,11 +29,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Env vars are parsed with sane defaults and documented in README; depends conceptually on #1/#2.
 - **Shipped:** 2026-05-28 — new [src/config.ts](../src/config.ts) parses `SEED4J_TIMEOUT_MS`, `SEED4J_RETRIES`, `SEED4J_AUTH_HEADER`, and the convenience `SEED4J_BEARER_TOKEN`; invalid values warn on stderr and fall back to defaults. `Seed4jClient` injects `Authorization` on every request. See [changelog.md](changelog.md#3--configurable-client-via-env-vars).
 
-### 4. Structured tool errors instead of thrown rejections
+### ✅ 4. Structured tool errors instead of thrown rejections
 - **What:** Catch errors in tool handlers and return `{ content: [...], isError: true }` with a concise, structured message (status, endpoint, hint) rather than letting them reject.
 - **Why:** MCP clients render `isError` results gracefully; raw rejections give the agent less to work with and can abort the turn.
 - **Where:** [src/tools.ts](../src/tools.ts) (a small `wrap` helper around each handler), [src/client.ts](../src/client.ts) `HttpError`.
 - **Done when:** Every tool returns a text error result on failure; `HttpError` body is summarised, not dumped verbatim; tested.
+- **Shipped:** 2026-05-28 — `buildTools` wraps every handler so failures become `{ isError: true, content: [{ type: "text", text: <JSON> }] }` with `error` kind (`http` / `timeout` / `client` / `unknown`), `tool`, `endpoint`, `status`, `bodyExcerpt` (capped at 500 chars), and an actionable `hint`. See [changelog.md](changelog.md#4--structured-tool-errors-instead-of-thrown-rejections).
 
 ---
 

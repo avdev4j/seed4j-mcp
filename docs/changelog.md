@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #4 — Structured tool errors instead of thrown rejections
+
+- **Shipped:** 2026-05-28
+- **User impact:** every tool now returns failures as a proper MCP error result — `{ isError: true, content: [{ type: "text", text: <JSON> }] }` — instead of throwing into the JSON-RPC layer. The JSON payload exposes the error kind (`http` / `timeout` / `client` / `unknown`), the originating endpoint and status, a 500-char excerpt of seed4j's response body, and an actionable hint. Agents can now route on the kind rather than parse free-form English, MCP clients render the failure gracefully instead of aborting the turn, and the context window stays clean.
+- **API change:** none on the client side; `Seed4jClient` keeps throwing `HttpError` / `TimeoutError`. `ToolResult` gains an optional `isError` field, populated by a new `wrap` helper applied to every tool in `buildTools`.
+- **Docs touched:** [overview.md](overview.md), [errors.md](errors.md).
+
 ### #3 — Configurable client via env vars
 
 - **Shipped:** 2026-05-28

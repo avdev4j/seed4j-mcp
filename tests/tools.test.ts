@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Seed4jClient } from "../src/client.js";
+import { HttpError, TimeoutError, type Seed4jClient } from "../src/client.js";
 import { buildTools } from "../src/tools.js";
 
 type ClientMock = {
@@ -36,6 +36,22 @@ async function invoke(client: Seed4jClient, name: string, input: Record<string, 
   const tool = findTool(client, name);
   const result = await tool.handler(input as never);
   return result.content[0]?.text;
+}
+
+async function invokeRaw(client: Seed4jClient, name: string, input: Record<string, unknown> = {}) {
+  const tool = findTool(client, name);
+  return tool.handler(input as never);
+}
+
+async function invokeError(
+  client: Seed4jClient,
+  name: string,
+  input: Record<string, unknown> = {},
+): Promise<Record<string, unknown>> {
+  const result = await invokeRaw(client, name, input);
+  expect(result.isError).toBe(true);
+  const text = result.content[0]?.text ?? "";
+  return JSON.parse(text) as Record<string, unknown>;
 }
 
 describe("MCP tool registry", () => {
@@ -177,5 +193,86 @@ describe("MCP tool registry", () => {
       "/tmp/app",
       { packageName: "com.example.app" },
     );
+  });
+
+  describe("structured tool errors", () => {
+    it("wraps a 5xx HttpError into an isError payload with a server-side hint", async () => {
+      mock.listModules.mockRejectedValue(
+        new HttpError(503, "starting", "http://test/api/modules"),
+      );
+      const payload = await invokeError(client, "list_modules");
+
+      expect(payload.error).toBe("http");
+      expect(payload.tool).toBe("list_modules");
+      expect(payload.status).toBe(503);
+      expect(payload.endpoint).toBe("http://test/api/modules");
+      expect(payload.bodyExcerpt).toBe("starting");
+      expect(String(payload.hint)).toContain("server error");
+    });
+
+    it("wraps a 4xx HttpError with a client-side hint", async () => {
+      mock.applyModule.mockRejectedValue(
+        new HttpError(400, "bad input", "http://test/api/modules/foo/apply-patch"),
+      );
+      const payload = await invokeError(client, "apply_module", {
+        moduleSlug: "foo",
+        projectFolder: "/tmp/app",
+      });
+
+      expect(payload.error).toBe("http");
+      expect(payload.status).toBe(400);
+      expect(String(payload.hint)).toContain("check the tool inputs");
+    });
+
+    it("truncates a very long HttpError body to ~500 chars with a remaining-count suffix", async () => {
+      const huge = "x".repeat(2000);
+      mock.listModules.mockRejectedValue(
+        new HttpError(500, huge, "http://test/api/modules"),
+      );
+      const payload = await invokeError(client, "list_modules");
+
+      const excerpt = String(payload.bodyExcerpt);
+      expect(excerpt.length).toBeLessThan(600);
+      expect(excerpt.startsWith("x".repeat(500))).toBe(true);
+      expect(excerpt).toContain("(1500 more chars)");
+    });
+
+    it("wraps a TimeoutError with endpoint, timeoutMs, and a timeout-specific hint", async () => {
+      mock.listModules.mockRejectedValue(
+        new TimeoutError("http://test/api/modules", "GET", 30000),
+      );
+      const payload = await invokeError(client, "list_modules");
+
+      expect(payload.error).toBe("timeout");
+      expect(payload.endpoint).toBe("GET http://test/api/modules");
+      expect(payload.timeoutMs).toBe(30000);
+      expect(String(payload.hint)).toContain("SEED4J_TIMEOUT_MS");
+    });
+
+    it("wraps a plain Error as a 'client' error with the original message", async () => {
+      mock.getPresetDetails.mockRejectedValue(new Error("Preset not found: Foo"));
+      const payload = await invokeError(client, "get_preset_details", {
+        presetName: "Foo",
+      });
+
+      expect(payload.error).toBe("client");
+      expect(payload.tool).toBe("get_preset_details");
+      expect(payload.message).toBe("Preset not found: Foo");
+    });
+
+    it("wraps a non-Error throw as an 'unknown' error", async () => {
+      mock.listModules.mockRejectedValue("string thrown");
+      const payload = await invokeError(client, "list_modules");
+
+      expect(payload.error).toBe("unknown");
+      expect(payload.message).toBe("string thrown");
+    });
+
+    it("leaves successful calls unchanged (no isError flag)", async () => {
+      mock.listModules.mockResolvedValue('{"categories":[]}');
+      const result = await invokeRaw(client, "list_modules");
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toBe('{"categories":[]}');
+    });
   });
 });

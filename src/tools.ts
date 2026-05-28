@@ -1,10 +1,11 @@
 import { z, type ZodRawShape } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { Seed4jClient } from "./client.js";
+import { HttpError, TimeoutError, type Seed4jClient } from "./client.js";
 
 export interface ToolResult {
   content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
 }
 
 export interface ToolDefinition<Shape extends ZodRawShape = ZodRawShape> {
@@ -13,6 +14,8 @@ export interface ToolDefinition<Shape extends ZodRawShape = ZodRawShape> {
   inputSchema: Shape;
   handler: (input: z.infer<z.ZodObject<Shape>>) => Promise<ToolResult>;
 }
+
+const ERROR_BODY_MAX_CHARS = 500;
 
 const propertiesSchema = z
   .record(z.string(), z.unknown())
@@ -188,7 +191,76 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         text(await client.applyPreset(presetName, projectFolder, properties)),
     },
   ];
-  return tools;
+  return tools.map((tool) => ({
+    ...tool,
+    handler: wrap(tool.name, tool.handler),
+  }));
+}
+
+function wrap<Input>(
+  toolName: string,
+  handler: (input: Input) => Promise<ToolResult>,
+): (input: Input) => Promise<ToolResult> {
+  return async (input) => {
+    try {
+      return await handler(input);
+    } catch (error) {
+      return errorResult(toolName, error);
+    }
+  };
+}
+
+function errorResult(toolName: string, error: unknown): ToolResult {
+  const payload = errorToPayload(toolName, error);
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload) }],
+    isError: true,
+  };
+}
+
+function errorToPayload(toolName: string, error: unknown): Record<string, unknown> {
+  if (error instanceof HttpError) {
+    const isClientError = error.status >= 400 && error.status < 500;
+    return {
+      error: "http",
+      tool: toolName,
+      status: error.status,
+      endpoint: error.url,
+      message: `seed4j responded with HTTP ${error.status}`,
+      bodyExcerpt: truncate(error.body, ERROR_BODY_MAX_CHARS),
+      hint: isClientError
+        ? "check the tool inputs — module slug, properties, or project folder may be wrong"
+        : "seed4j returned a server error; check the seed4j server logs",
+    };
+  }
+  if (error instanceof TimeoutError) {
+    return {
+      error: "timeout",
+      tool: toolName,
+      endpoint: `${error.method} ${error.url}`,
+      timeoutMs: error.timeoutMs,
+      message: `request timed out after ${error.timeoutMs}ms`,
+      hint: "increase SEED4J_TIMEOUT_MS or verify seed4j is reachable at SEED4J_BASE_URL",
+    };
+  }
+  if (error instanceof Error) {
+    return {
+      error: "client",
+      tool: toolName,
+      message: error.message,
+    };
+  }
+  return {
+    error: "unknown",
+    tool: toolName,
+    message: String(error),
+  };
+}
+
+function truncate(body: string, maxChars: number): string {
+  if (body.length <= maxChars) return body;
+  const remaining = body.length - maxChars;
+  return `${body.slice(0, maxChars)}… (${remaining} more chars)`;
 }
 
 export function registerTools(server: McpServer, client: Seed4jClient): void {

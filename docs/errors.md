@@ -1,42 +1,107 @@
 # Errors
 
-## How failures surface today
+## How failures surface to the agent
 
-Tool handlers do **not** catch errors from `Seed4jClient`. When a call fails, the underlying `Promise` rejection propagates into the MCP SDK and is delivered to the client as a JSON-RPC error response. Three sources of failure exist:
-
-### `HttpError` (non-2xx from seed4j)
-
-`Seed4jClient` throws an [`HttpError`](../src/client.ts) when seed4j responds with a non-2xx status:
+Every tool handler is wrapped in a small `wrap` helper ([src/tools.ts](../src/tools.ts)) that catches thrown errors and returns a **structured MCP error result** instead of letting the rejection bubble up:
 
 ```
-HttpError {
-  status: number,
-  body: string,   // raw response body
-  url: string,    // the absolute URL that was hit
-  message: `HTTP ${status} for ${url}: ${body}`,
+{
+  content: [{ type: "text", text: "<JSON payload>" }],
+  isError: true
 }
 ```
 
-The `message` is what the agent ultimately sees. The whole response body is included verbatim, which is sometimes very long.
+MCP clients render `isError: true` results gracefully (typically as an inline error block the agent can read and the user can see), instead of aborting the whole turn the way a raw rejection might. The text inside is a JSON-encoded payload the agent can parse and route on.
 
-### `TimeoutError` (request exceeded the per-call timeout)
+### Payload shape
 
-Every outbound `fetch` is wrapped with an `AbortController` armed for `timeoutMs` (default **30 s**). When the timer fires, the request is aborted and the call rejects with a [`TimeoutError`](../src/client.ts):
+| Field | Always present? | Notes |
+| --- | --- | --- |
+| `error` | yes | `"http"` \| `"timeout"` \| `"client"` \| `"unknown"` — the error kind. |
+| `tool` | yes | The MCP tool name that produced the error, e.g. `"list_modules"`. |
+| `message` | yes | One-line human-readable summary. |
+| `status` | http only | The HTTP status code returned by seed4j. |
+| `endpoint` | http + timeout | The absolute URL (and method, for timeouts) that was hit. |
+| `bodyExcerpt` | http only | The first 500 chars of the seed4j response body; longer bodies get a `… (N more chars)` suffix. |
+| `timeoutMs` | timeout only | The configured timeout that fired. |
+| `hint` | when actionable | A short next-step suggestion (e.g. *"check the tool inputs"*, *"increase SEED4J_TIMEOUT_MS"*). |
 
-```
-TimeoutError {
-  url: string,        // the absolute URL that was hit
-  method: string,     // "GET" | "POST"
-  timeoutMs: number,  // the configured timeout
-  message: `seed4j request timed out after ${timeoutMs}ms: ${method} ${url}`,
+### Per-kind examples
+
+**`http` — seed4j responded with a non-2xx status.** Hint differs by status family.
+
+```json
+{
+  "error": "http",
+  "tool": "apply_module",
+  "status": 400,
+  "endpoint": "http://localhost:1339/api/modules/maven-java/apply-patch",
+  "message": "seed4j responded with HTTP 400",
+  "bodyExcerpt": "missing mandatory property: packageName",
+  "hint": "check the tool inputs — module slug, properties, or project folder may be wrong"
 }
 ```
 
-A hung or unreachable seed4j therefore fails fast with an actionable error instead of stalling the MCP client. The timeout applies to all HTTP calls (catalogue GETs, presets GETs, apply-patch POSTs, project status GET). The configurable env var (`SEED4J_TIMEOUT_MS`) lands in roadmap #3 — today the default is in effect for the production entrypoint.
+```json
+{
+  "error": "http",
+  "tool": "list_modules",
+  "status": 503,
+  "endpoint": "http://localhost:1339/api/modules",
+  "message": "seed4j responded with HTTP 503",
+  "bodyExcerpt": "starting up...",
+  "hint": "seed4j returned a server error; check the seed4j server logs"
+}
+```
+
+**`timeout` — the per-request timer fired.**
+
+```json
+{
+  "error": "timeout",
+  "tool": "get_module_details",
+  "endpoint": "GET http://localhost:1339/api/modules/maven-java",
+  "timeoutMs": 30000,
+  "message": "request timed out after 30000ms",
+  "hint": "increase SEED4J_TIMEOUT_MS or verify seed4j is reachable at SEED4J_BASE_URL"
+}
+```
+
+**`client` — a plain `Error` thrown before any HTTP call** (e.g. unknown preset name, empty step list).
+
+```json
+{
+  "error": "client",
+  "tool": "get_preset_details",
+  "message": "Preset not found: Foo"
+}
+```
+
+**`unknown` — a non-`Error` value was thrown.** The original value is stringified into `message`.
+
+## Underlying error classes (inside `Seed4jClient`)
+
+The transport layer still throws typed errors; the wrapping happens at the tool boundary. These types are exported from [src/client.ts](../src/client.ts) and remain useful for tests and for any direct programmatic use.
+
+### `HttpError`
+
+```
+HttpError { status, body, url, message: `HTTP ${status} for ${url}: ${body}` }
+```
+
+Thrown when seed4j responds with a non-2xx status.
+
+### `TimeoutError`
+
+```
+TimeoutError { url, method, timeoutMs, message: `seed4j request timed out after ${timeoutMs}ms: ${method} ${url}` }
+```
+
+Thrown when the `AbortController` armed for `timeoutMs` (default 30 s, override via `SEED4J_TIMEOUT_MS`) fires.
 
 ### Validation / programming errors
 
-Some client methods throw plain `Error`s before any HTTP call:
+Some client methods throw plain `Error`s before any HTTP call. After wrapping these surface as `error: "client"`:
 
 | Method | Throws when |
 | --- | --- |
@@ -54,10 +119,8 @@ Read-only GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/mod
 - **Not retryable:** HTTP 4xx (`HttpError` with `status < 500`) — these are deterministic (auth, bad slug, malformed query).
 - **Not retried at all:** POSTs to `apply-patch`. Re-running a half-applied module could leave the project in an inconsistent state — that decision belongs to the agent, not the transport layer.
 
-Backoff is capped exponential: `min(retryBaseDelayMs * 2^attempt, retryMaxDelayMs)`. Defaults are `retries = 2` (so up to 3 attempts), `retryBaseDelayMs = 200`, `retryMaxDelayMs = 2_000`. When all attempts fail, the **last** error propagates unchanged (so callers can still match on `HttpError.status` / `TimeoutError`).
+Backoff is capped exponential: `min(retryBaseDelayMs * 2^attempt, retryMaxDelayMs)`. Defaults are `retries = 2` (so up to 3 attempts, override via `SEED4J_RETRIES`), `retryBaseDelayMs = 200`, `retryMaxDelayMs = 2_000`. When all attempts fail, the **last** error propagates unchanged — and the tool wrapper then turns it into the structured payload above.
 
-Env-driven configuration (`SEED4J_RETRIES`, plus the existing `SEED4J_TIMEOUT_MS`) is tracked as roadmap #3.
+## `apply_modules` and `apply_preset` partial failures
 
-## Known gaps (tracked in the roadmap)
-
-- **Raw error bodies** — long stack traces and HTML error pages from seed4j flow through unchanged (#4 will summarise and switch to `isError: true` results).
+These two tools intentionally **aggregate** per-step failures into a successful response (the `failure` and `remaining` fields described in [tools.md](tools.md)), so they typically don't trigger the structured-error wrapper. `wrap` only kicks in for them when something blows up before the apply loop starts (e.g. a 503 on the preset lookup, an empty step list).
