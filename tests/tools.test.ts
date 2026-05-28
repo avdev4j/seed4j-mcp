@@ -22,6 +22,7 @@ function createClientMock(): ClientMock {
     applyModule: vi.fn(),
     createProject: vi.fn(),
     validateProperties: vi.fn(),
+    previewModule: vi.fn(),
     applyModules: vi.fn(),
     applyPreset: vi.fn(),
   } as unknown as ClientMock;
@@ -77,6 +78,7 @@ describe("MCP tool registry", () => {
       "get_project_status",
       "apply_module",
       "create_project",
+      "preview_module",
       "validate_properties",
       "apply_modules",
       "apply_preset",
@@ -196,6 +198,27 @@ describe("MCP tool registry", () => {
       commit: true,
     });
     expect(mock.createProject).toHaveBeenCalledWith("/tmp/app", { baseName: "myapp" }, true);
+  });
+
+  it("preview_module forwards properties as an object", async () => {
+    mock.previewModule.mockResolvedValue('{"mode":"copy"}');
+    await invoke(client, "preview_module", {
+      moduleSlug: "maven-java",
+      projectFolder: "/tmp/app",
+      properties: { packageName: "com.example.app" },
+    });
+    expect(mock.previewModule).toHaveBeenCalledWith("maven-java", "/tmp/app", {
+      packageName: "com.example.app",
+    });
+  });
+
+  it("preview_module defaults to an empty properties map when omitted", async () => {
+    mock.previewModule.mockResolvedValue("{}");
+    await invoke(client, "preview_module", {
+      moduleSlug: "init",
+      projectFolder: "/tmp/app",
+    });
+    expect(mock.previewModule).toHaveBeenCalledWith("init", "/tmp/app", {});
   });
 
   it("validate_properties forwards properties to the client", async () => {

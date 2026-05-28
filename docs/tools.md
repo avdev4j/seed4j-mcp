@@ -60,6 +60,31 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 - **Input:** `projectFolder: string` (absolute path).
 - **Output:** seed4j's record of what has been applied to that folder and the aggregated properties.
 
+### `preview_module`
+- **Input:** `moduleSlug: string`, `projectFolder: string`, `properties?: Record<string, unknown>`.
+- **Behaviour:** dry-run the module against a scratch copy of the project folder and report the file-level diff — **never** mutates the real project. Internally: copies `projectFolder` to a scratch directory (or starts empty when the folder doesn't exist), applies the module there with `commit: false`, walks the result, compares to the original byte-for-byte, and removes the scratch directory in a `finally`. Auto-selects mode:
+  - **`copy`** when `projectFolder` exists — the diff is against the project's current contents.
+  - **`empty`** when `projectFolder` doesn't exist — useful for previewing `init` (and other base modules) before `create_project`.
+- **Output:**
+  ```json
+  {
+    "mode": "copy",
+    "moduleSlug": "maven-java",
+    "projectFolder": "/Users/.../myapp",
+    "changedFilesCount": 2,
+    "changes": [
+      { "path": "pom.xml", "kind": "modified", "sizeBytes": 3204, "previousSizeBytes": 1800 },
+      { "path": "src/main/java/Foo.java", "kind": "added", "sizeBytes": 250 }
+    ]
+  }
+  ```
+  - `kind` is one of `added` / `modified` / `deleted`. Files are compared by exact byte equality (no hashing).
+  - `sizeBytes` is the post-apply size; `modified` entries also carry `previousSizeBytes`. `deleted` entries have `sizeBytes: 0` and `previousSizeBytes`.
+  - `changes` is sorted alphabetically by `path` for stable output.
+  - `.git/` directories are excluded from both sides of the diff (seed4j may auto-init git; the noise would dominate).
+- **Constraints:** the MCP server and seed4j must share a filesystem (same constraint as `apply_module` — seed4j needs to write to the scratch path). Disk required ≈ project size. Calls are non-cached and non-retried — preview always reflects the latest state.
+- **When to use:** pair with `validate_properties` before `apply_module` so the agent can show the user a concrete file-by-file plan instead of describing it. Recommended sequence: `validate_properties → preview_module → user confirms → apply_module`.
+
 ### `validate_properties`
 - **Input:** `moduleSlug: string`, `properties: Record<string, unknown>`.
 - **Output:** `{ slug, valid, errors, warnings, defaultsApplied }`.
@@ -98,6 +123,5 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
 
 ## Not yet exposed
 
-- Module apply preview/dry-run (roadmap item 9).
 - MCP resources (roadmap item 10) and prompts (roadmap item 11).
 - Module removal / uninstall (roadmap item 17).

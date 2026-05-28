@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #9 — Dry-run / preview before applying a module
+
+- **Shipped:** 2026-05-28
+- **User impact:** new `preview_module` tool runs a module against a **scratch copy** of the project folder and reports the file-level diff (added / modified / deleted with sizes) — without touching the real project. Auto-selects `copy` mode (diff vs current project state) or `empty` mode (when the folder doesn't exist yet, useful for previewing `init` before `create_project`). Always runs with `commit: false`. Enables a safe `validate_properties → preview_module → user confirms → apply_module` flow that shows the user a concrete plan instead of an English summary.
+- **API change:** new `Seed4jClient.previewModule(slug, folder, properties?)`. Implementation is client-side — no new seed4j endpoint required. Constraint: MCP server and seed4j must share a filesystem (same constraint that already applies to `apply_module`).
+- **Docs touched:** [tools.md](tools.md), [overview.md](overview.md).
+
 ### #8 — Connectivity / health-check tool
 
 - **Shipped:** 2026-05-28

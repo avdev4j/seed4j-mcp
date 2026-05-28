@@ -1,4 +1,12 @@
-import { mkdtemp, stat } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -587,6 +595,224 @@ describe("Seed4jClient", () => {
       await client.createProject(target, {}, true);
 
       expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
+    });
+  });
+
+  describe("previewModule", () => {
+    type ApplyEffect = (scratchDir: string) => Promise<void>;
+
+    function previewFixture() {
+      const tmp: string[] = [];
+
+      const newTmp = async (prefix = "preview-test-") => {
+        const dir = await mkdtemp(path.join(tmpdir(), prefix));
+        tmp.push(dir);
+        return dir;
+      };
+
+      const cleanup = async () => {
+        for (const dir of tmp) {
+          await rm(dir, { recursive: true, force: true });
+        }
+      };
+
+      const buildClient = (apply: ApplyEffect) => {
+        const fetcher: FetchLike = vi.fn(async (input, init) => {
+          const url = input.toString();
+          if (url.includes("/apply-patch")) {
+            const body = JSON.parse(init?.body as string) as { projectFolder?: string };
+            if (body.projectFolder) {
+              await apply(body.projectFolder);
+            }
+            return new Response('{"status":"ok"}', { status: 200 });
+          }
+          throw new Error(`unexpected url ${url}`);
+        });
+        return new Seed4jClient(BASE_URL, fetcher, { retries: 0 });
+      };
+
+      return { newTmp, cleanup, buildClient };
+    }
+
+    it("returns mode: 'copy' with added/modified diff when the project exists", async () => {
+      const fx = previewFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await writeFile(path.join(projectFolder, "pom.xml"), "<existing/>");
+        await writeFile(path.join(projectFolder, "untouched.txt"), "stay");
+
+        const previewer = fx.buildClient(async (scratchDir) => {
+          await writeFile(path.join(scratchDir, "pom.xml"), "<modified/>");
+          await mkdir(path.join(scratchDir, "src/main/java"), { recursive: true });
+          await writeFile(path.join(scratchDir, "src/main/java/Foo.java"), "// new");
+        });
+
+        const payload = JSON.parse(
+          await previewer.previewModule("maven-java", projectFolder, {}),
+        );
+        expect(payload.mode).toBe("copy");
+        expect(payload.projectFolder).toBe(projectFolder);
+        expect(payload.changedFilesCount).toBe(2);
+        const byPath = new Map(
+          (payload.changes as Array<{ path: string }>).map((c) => [c.path, c]),
+        );
+        expect(byPath.get("pom.xml")).toMatchObject({
+          kind: "modified",
+          previousSizeBytes: "<existing/>".length,
+          sizeBytes: "<modified/>".length,
+        });
+        expect(byPath.get("src/main/java/Foo.java")).toMatchObject({
+          kind: "added",
+          sizeBytes: "// new".length,
+        });
+        expect(byPath.has("untouched.txt")).toBe(false);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("returns mode: 'empty' when the project folder does not exist", async () => {
+      const fx = previewFixture();
+      try {
+        const base = await fx.newTmp();
+        const missing = path.join(base, "does-not-exist");
+
+        const previewer = fx.buildClient(async (scratchDir) => {
+          await writeFile(path.join(scratchDir, ".gitignore"), "node_modules\n");
+          await writeFile(path.join(scratchDir, "README.md"), "# hello");
+        });
+
+        const payload = JSON.parse(await previewer.previewModule("init", missing, {}));
+        expect(payload.mode).toBe("empty");
+        expect(payload.projectFolder).toBe(missing);
+        expect(payload.changedFilesCount).toBe(2);
+        const paths = (payload.changes as Array<{ path: string; kind: string }>).map(
+          (c) => c.path,
+        );
+        expect(paths).toEqual([".gitignore", "README.md"]);
+        for (const change of payload.changes as Array<{ kind: string }>) {
+          expect(change.kind).toBe("added");
+        }
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("flags a deleted file as kind: 'deleted'", async () => {
+      const fx = previewFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await writeFile(path.join(projectFolder, "old.txt"), "removed me");
+
+        const previewer = fx.buildClient(async (scratchDir) => {
+          await rm(path.join(scratchDir, "old.txt"));
+        });
+
+        const payload = JSON.parse(
+          await previewer.previewModule("delete-mod", projectFolder, {}),
+        );
+        expect(payload.changes).toEqual([
+          {
+            path: "old.txt",
+            kind: "deleted",
+            sizeBytes: 0,
+            previousSizeBytes: "removed me".length,
+          },
+        ]);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("excludes .git/ on both sides of the diff", async () => {
+      const fx = previewFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await mkdir(path.join(projectFolder, ".git"), { recursive: true });
+        await writeFile(path.join(projectFolder, ".git/HEAD"), "ref: refs/heads/main\n");
+
+        const previewer = fx.buildClient(async (scratchDir) => {
+          await mkdir(path.join(scratchDir, ".git"), { recursive: true });
+          await writeFile(path.join(scratchDir, ".git/HEAD"), "ref: refs/heads/other\n");
+          await writeFile(path.join(scratchDir, "real.txt"), "hello");
+        });
+
+        const payload = JSON.parse(
+          await previewer.previewModule("mod", projectFolder, {}),
+        );
+        const paths = (payload.changes as Array<{ path: string }>).map((c) => c.path);
+        expect(paths).toEqual(["real.txt"]);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("returns an empty diff when the module makes no change", async () => {
+      const fx = previewFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await writeFile(path.join(projectFolder, "stable.txt"), "unchanged");
+
+        const previewer = fx.buildClient(async () => undefined);
+        const payload = JSON.parse(
+          await previewer.previewModule("noop", projectFolder, {}),
+        );
+        expect(payload.changedFilesCount).toBe(0);
+        expect(payload.changes).toEqual([]);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("cleans up the scratch dir even when the underlying apply fails", async () => {
+      const fx = previewFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await writeFile(path.join(projectFolder, "kept.txt"), "ok");
+
+        const beforeScratch = new Set<string>();
+        const fetcher: FetchLike = vi.fn(async (_input, init) => {
+          const body = JSON.parse(init?.body as string) as { projectFolder?: string };
+          if (body.projectFolder) beforeScratch.add(body.projectFolder);
+          return new Response("boom", { status: 500 });
+        });
+        const failing = new Seed4jClient(BASE_URL, fetcher, { retries: 0 });
+
+        await expect(
+          failing.previewModule("mod", projectFolder, {}),
+        ).rejects.toBeInstanceOf(HttpError);
+
+        for (const scratch of beforeScratch) {
+          await expect(access(scratch)).rejects.toThrow();
+        }
+        const kept = await readFile(path.join(projectFolder, "kept.txt"), "utf8");
+        expect(kept).toBe("ok");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("never mutates the original project folder", async () => {
+      const fx = previewFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await writeFile(path.join(projectFolder, "pom.xml"), "<original/>");
+
+        const previewer = fx.buildClient(async (scratchDir) => {
+          await writeFile(path.join(scratchDir, "pom.xml"), "<MUTATED/>");
+          await writeFile(path.join(scratchDir, "extra.txt"), "added");
+        });
+
+        await previewer.previewModule("maven-java", projectFolder, {});
+
+        const original = await readFile(path.join(projectFolder, "pom.xml"), "utf8");
+        expect(original).toBe("<original/>");
+        await expect(
+          access(path.join(projectFolder, "extra.txt")),
+        ).rejects.toThrow();
+      } finally {
+        await fx.cleanup();
+      }
     });
   });
 

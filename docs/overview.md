@@ -26,7 +26,7 @@ These paths are inherited from the JHipster-Lite-style API. Verify them against 
 | --- | --- | --- |
 | GET | `/api/modules` | `list_modules`, `search_modules`, `ping_seed4j` (liveness probe) |
 | GET | `/api/modules/{slug}` | `get_module_details`, `validate_properties` |
-| POST | `/api/modules/{slug}/apply-patch` | `apply_module`, `apply_modules`, `apply_preset`, `create_project` |
+| POST | `/api/modules/{slug}/apply-patch` | `apply_module`, `apply_modules`, `apply_preset`, `create_project`, `preview_module` (against a scratch dir; never the user's project) |
 | GET | `/api/presets` | `list_presets`, `get_preset_details`, `apply_preset` |
 | GET | `/api/projects?path=…` | `get_project_status` |
 | GET | `/api/modules-landscape` | `get_module_dependencies` |

@@ -72,11 +72,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Tool returns a clear up/down result with the resolved base URL; tested.
 - **Shipped:** 2026-05-28 — new `ping_seed4j` tool fires parallel liveness (`/api/modules`) and best-effort version (`/management/info`) probes, bypassing cache + retries, default 5 s timeout (`timeoutMs` override). Returns `{ reachable, ok, baseUrl, endpoint, status, latencyMs, version, checkedAt, error? }`. See [changelog.md](changelog.md#8--connectivity--health-check-tool).
 
-### 9. Dry-run / preview before applying a module
+### ✅ 9. Dry-run / preview before applying a module
 - **What:** If seed4j supports a preview/diff mode for apply-patch, expose a `preview_module` tool returning the files that *would* change without mutating the folder.
 - **Why:** Lets the agent show the user a plan before touching disk; pairs naturally with `validate_properties`.
 - **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts).
 - **Done when:** Preview returns the change set; gated behind seed4j actually supporting it (verify the endpoint first). Depends on confirming the seed4j API.
+- **Shipped:** 2026-05-28 — implemented **client-side** (no seed4j endpoint required): copy the project folder to a scratch dir, apply the module there with `commit: false`, walk both sides, return `{ mode, moduleSlug, projectFolder, changedFilesCount, changes: [{ path, kind: added|modified|deleted, sizeBytes, previousSizeBytes? }] }`. `mode` is `copy` when the folder exists, `empty` otherwise (useful for previewing `init`). `.git/` excluded; scratch always cleaned up via `finally`. See [changelog.md](changelog.md#9--dry-run--preview-before-applying-a-module).
 
 ---
 

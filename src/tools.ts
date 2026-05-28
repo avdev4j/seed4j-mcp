@@ -156,6 +156,22 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         text(await client.createProject(projectFolder, properties, commit ?? false)),
     },
     {
+      name: "preview_module",
+      description:
+        "Dry-run a seed4j module against a scratch copy of the project folder and return the list of files that would change (added/modified/deleted) — without touching the real project. Auto-selects 'copy' mode when the folder exists (diff vs current project state) or 'empty' mode when it doesn't (e.g. previewing 'init' before create_project). Always runs with commit: false. Pair with validate_properties before apply_module when the agent wants to show the user a concrete plan.",
+      inputSchema: {
+        moduleSlug: z.string().describe("Slug identifier of the seed4j module to preview."),
+        projectFolder: z
+          .string()
+          .describe(
+            "Absolute path to the project folder. When it already exists, the preview diffs the module's effect against its current contents. When it doesn't, the preview runs against an empty scratch (useful for `init` and other base modules).",
+          ),
+        properties: optionalPropertiesSchema,
+      },
+      handler: async ({ moduleSlug, projectFolder, properties }) =>
+        text(await client.previewModule(moduleSlug, projectFolder, properties ?? {})),
+    },
+    {
       name: "validate_properties",
       description:
         "Dry-run check of a property map against a module's schema (mandatory keys present, types match STRING/INTEGER/BOOLEAN, no unknown keys). Returns {valid, errors, warnings}. Run this before apply_module to surface missing or mistyped inputs without mutating the project.",

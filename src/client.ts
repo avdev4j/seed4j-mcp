@@ -1,4 +1,6 @@
-import { mkdir } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 export type Properties = Record<string, unknown>;
 
@@ -84,6 +86,19 @@ interface FailureEntry {
   status: number;
   body: string;
 }
+
+type PreviewMode = "copy" | "empty";
+
+type PreviewChangeKind = "added" | "modified" | "deleted";
+
+interface PreviewChange {
+  path: string;
+  kind: PreviewChangeKind;
+  sizeBytes: number;
+  previousSizeBytes?: number;
+}
+
+const PREVIEW_SKIP_SEGMENTS = new Set([".git"]);
 
 export interface Seed4jClientOptions {
   timeoutMs?: number;
@@ -295,6 +310,34 @@ export class Seed4jClient {
   ): Promise<string> {
     await mkdir(projectFolder, { recursive: true });
     return this.applyModule("init", projectFolder, properties, commit);
+  }
+
+  async previewModule(
+    moduleSlug: string,
+    projectFolder: string,
+    properties: Properties,
+  ): Promise<string> {
+    const mode: PreviewMode = (await directoryExists(projectFolder)) ? "copy" : "empty";
+    const before =
+      mode === "copy" ? await snapshotFiles(projectFolder) : new Map<string, Buffer>();
+    const scratchDir = await mkdtemp(path.join(tmpdir(), "seed4j-preview-"));
+    try {
+      if (mode === "copy") {
+        await cp(projectFolder, scratchDir, { recursive: true });
+      }
+      await this.applyModule(moduleSlug, scratchDir, properties, false);
+      const after = await snapshotFiles(scratchDir);
+      const changes = diffSnapshots(before, after);
+      return JSON.stringify({
+        mode,
+        moduleSlug,
+        projectFolder,
+        changedFilesCount: changes.length,
+        changes,
+      });
+    } finally {
+      await rm(scratchDir, { recursive: true, force: true });
+    }
   }
 
   async applyModules(
@@ -532,6 +575,75 @@ export class Seed4jClient {
         });
     });
   }
+}
+
+async function directoryExists(folder: string): Promise<boolean> {
+  try {
+    const info = await stat(folder);
+    return info.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function snapshotFiles(root: string): Promise<Map<string, Buffer>> {
+  const snapshot = new Map<string, Buffer>();
+  await walkInto(root, root, snapshot);
+  return snapshot;
+}
+
+async function walkInto(
+  root: string,
+  current: string,
+  snapshot: Map<string, Buffer>,
+): Promise<void> {
+  const entries = await readdir(current, { withFileTypes: true });
+  for (const entry of entries) {
+    if (PREVIEW_SKIP_SEGMENTS.has(entry.name)) continue;
+    const absolute = path.join(current, entry.name);
+    if (entry.isDirectory()) {
+      await walkInto(root, absolute, snapshot);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    const relative = path.relative(root, absolute).split(path.sep).join("/");
+    const bytes = await readFile(absolute);
+    snapshot.set(relative, bytes);
+  }
+}
+
+function diffSnapshots(
+  before: Map<string, Buffer>,
+  after: Map<string, Buffer>,
+): PreviewChange[] {
+  const changes: PreviewChange[] = [];
+  for (const [relPath, afterBytes] of after) {
+    const beforeBytes = before.get(relPath);
+    if (beforeBytes === undefined) {
+      changes.push({ path: relPath, kind: "added", sizeBytes: afterBytes.length });
+      continue;
+    }
+    if (!beforeBytes.equals(afterBytes)) {
+      changes.push({
+        path: relPath,
+        kind: "modified",
+        sizeBytes: afterBytes.length,
+        previousSizeBytes: beforeBytes.length,
+      });
+    }
+  }
+  for (const [relPath, beforeBytes] of before) {
+    if (!after.has(relPath)) {
+      changes.push({
+        path: relPath,
+        kind: "deleted",
+        sizeBytes: 0,
+        previousSizeBytes: beforeBytes.length,
+      });
+    }
+  }
+  changes.sort((a, b) => a.path.localeCompare(b.path));
+  return changes;
 }
 
 async function extractVersion(
