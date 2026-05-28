@@ -2,6 +2,27 @@
 
 Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type: "text", text }] }`, unless noted otherwise. Tool descriptions seen by the agent are the source of truth — this page mirrors them for human readers.
 
+## Connectivity
+
+### `ping_seed4j`
+- **Input:** `timeoutMs?: number` (positive integer; default 5000).
+- **Behaviour:** fires `GET /api/modules` (liveness) and `GET /management/info` (version, best-effort) in parallel, bypassing the catalogue cache and the retry layer so the result reflects current connectivity. Latency is measured around the liveness probe.
+- **Output:**
+  ```json
+  {
+    "reachable": true,         // got an HTTP response within the timeout
+    "ok": true,                // liveness returned 2xx
+    "baseUrl": "...",          // resolved SEED4J_BASE_URL
+    "endpoint": "/api/modules",
+    "status": 200,             // null when reachable: false
+    "latencyMs": 47,
+    "version": "1.2.3",        // null when /management/info is missing or doesn't expose a version
+    "checkedAt": "2026-05-28T22:30:00.000Z",
+    "error": "..."             // only present when reachable: false
+  }
+  ```
+- **When to use:** on startup to confirm wiring, before a long apply plan, or when another tool returns an unexpected error and the agent needs to know whether seed4j is even up.
+
 ## Catalogue
 
 ### `list_modules`
@@ -77,6 +98,6 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
 
 ## Not yet exposed
 
-- Health/ping tool (roadmap item 8).
 - Module apply preview/dry-run (roadmap item 9).
 - MCP resources (roadmap item 10) and prompts (roadmap item 11).
+- Module removal / uninstall (roadmap item 17).

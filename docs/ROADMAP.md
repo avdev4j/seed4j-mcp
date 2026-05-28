@@ -65,11 +65,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Enum/pattern violations appear in `errors`; behaviour matches seed4j's own schema; tested against representative module schemas.
 - **Shipped:** 2026-05-28 — ENUM (allowed-set check with the values inlined in the error), pattern (regex with the source inlined in the error, unparseable regex silently skipped), and `defaultsApplied: [{ key, default }]` in the response. Mandatory + missing + default-present is now informational instead of an error. Field-name detection is defensive (`enumValues` / `values` / `acceptableValues`, `defaultValue` / `default`) pending #15. See [changelog.md](changelog.md#7--richer-validate_properties-enum-pattern-defaults).
 
-### 8. Connectivity / health-check tool
+### ✅ 8. Connectivity / health-check tool
 - **What:** Add a `ping_seed4j` (or `health`) tool that hits a lightweight endpoint and reports reachability, base URL, and seed4j version if available.
 - **Why:** First thing an agent (or a debugging human) wants to know is "is seed4j actually up at the configured URL?" — currently you only find out when a real tool fails.
 - **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts).
 - **Done when:** Tool returns a clear up/down result with the resolved base URL; tested.
+- **Shipped:** 2026-05-28 — new `ping_seed4j` tool fires parallel liveness (`/api/modules`) and best-effort version (`/management/info`) probes, bypassing cache + retries, default 5 s timeout (`timeoutMs` override). Returns `{ reachable, ok, baseUrl, endpoint, status, latencyMs, version, checkedAt, error? }`. See [changelog.md](changelog.md#8--connectivity--health-check-tool).
 
 ### 9. Dry-run / preview before applying a module
 - **What:** If seed4j supports a preview/diff mode for apply-patch, expose a `preview_module` tool returning the files that *would* change without mutating the folder.

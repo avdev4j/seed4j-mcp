@@ -717,6 +717,137 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("ping", () => {
+    function arrange(opts: {
+      liveness: () => Promise<Response> | Response;
+      version?: () => Promise<Response> | Response;
+      now?: () => number;
+    }) {
+      const versionFactory = opts.version ?? (() => new Response("", { status: 404 }));
+      const fetcher: FetchLike = vi.fn(async (input) => {
+        const url = input.toString();
+        if (url.endsWith("/api/modules")) {
+          return opts.liveness();
+        }
+        if (url.endsWith("/management/info")) {
+          return versionFactory();
+        }
+        throw new Error(`unexpected url ${url}`);
+      });
+      const pinger = new Seed4jClient(BASE_URL, fetcher, {
+        now: opts.now ?? (() => 0),
+        retries: 0,
+      });
+      return { fetcher, client: pinger };
+    }
+
+    it("returns reachable+ok with extracted version on a successful ping", async () => {
+      const local = arrange({
+        liveness: () => new Response('{"categories":[]}', { status: 200 }),
+        version: () =>
+          new Response(
+            JSON.stringify({ build: { version: "1.2.3" } }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      });
+
+      const payload = JSON.parse(await local.client.ping());
+      expect(payload.reachable).toBe(true);
+      expect(payload.ok).toBe(true);
+      expect(payload.status).toBe(200);
+      expect(payload.baseUrl).toBe(BASE_URL);
+      expect(payload.endpoint).toBe("/api/modules");
+      expect(payload.version).toBe("1.2.3");
+      expect(typeof payload.latencyMs).toBe("number");
+      expect(typeof payload.checkedAt).toBe("string");
+    });
+
+    it("reports reachable but not ok on a 4xx (e.g. auth missing)", async () => {
+      const local = arrange({
+        liveness: () => new Response("nope", { status: 401 }),
+      });
+      const payload = JSON.parse(await local.client.ping());
+      expect(payload.reachable).toBe(true);
+      expect(payload.ok).toBe(false);
+      expect(payload.status).toBe(401);
+    });
+
+    it("reports unreachable with an error message when the fetch never resolves", async () => {
+      const local = arrange({
+        liveness: () =>
+          new Promise<Response>((_, reject) => {
+            setTimeout(() => reject(new Error("never")), 1000);
+          }),
+      });
+      const pinger = local.client;
+      const payload = JSON.parse(await pinger.ping(20));
+      expect(payload.reachable).toBe(false);
+      expect(payload.ok).toBe(false);
+      expect(payload.status).toBeNull();
+      expect(payload.error).toContain("timed out after 20ms");
+    });
+
+    it("returns version: null when /management/info 404s", async () => {
+      const local = arrange({
+        liveness: () => new Response('{"categories":[]}', { status: 200 }),
+        version: () => new Response("nope", { status: 404 }),
+      });
+      const payload = JSON.parse(await local.client.ping());
+      expect(payload.reachable).toBe(true);
+      expect(payload.version).toBeNull();
+    });
+
+    it("returns version: null when /management/info returns invalid JSON", async () => {
+      const local = arrange({
+        liveness: () => new Response('{"categories":[]}', { status: 200 }),
+        version: () => new Response("not json", { status: 200 }),
+      });
+      const payload = JSON.parse(await local.client.ping());
+      expect(payload.version).toBeNull();
+    });
+
+    it("supports a top-level 'version' field in /management/info", async () => {
+      const local = arrange({
+        liveness: () => new Response("{}", { status: 200 }),
+        version: () =>
+          new Response(JSON.stringify({ version: "2.0.0" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      });
+      const payload = JSON.parse(await local.client.ping());
+      expect(payload.version).toBe("2.0.0");
+    });
+
+    it("does not populate the catalogue cache when pinging", async () => {
+      const local = arrange({
+        liveness: () => new Response('{"categories":[]}', { status: 200 }),
+      });
+      await local.client.ping();
+      const cached = await local.client.listModules();
+      expect(cached).toBe('{"categories":[]}');
+      expect(local.fetcher).toHaveBeenCalledTimes(3);
+    });
+
+    it("does a real fetch even when /api/modules is already cached", async () => {
+      const cache = mockFetcher();
+      cache.jsonOk('{"categories":["cached"]}');
+      const pinger = new Seed4jClient(BASE_URL, cache.fetcher, { retries: 0 });
+      await pinger.listModules();
+
+      const pingResponses: Array<Response> = [
+        new Response('{"categories":["fresh"]}', { status: 200 }),
+        new Response("", { status: 404 }),
+      ];
+      const directFetcher: FetchLike = vi.fn(async () => pingResponses.shift()!);
+      const direct = new Seed4jClient(BASE_URL, directFetcher, { retries: 0 });
+      const payload = JSON.parse(await direct.ping());
+      expect(payload.ok).toBe(true);
+      expect(directFetcher).toHaveBeenCalledTimes(2);
+      cache.assertDrained();
+    });
+  });
+
   describe("catalogue cache", () => {
     function cachingClient(opts: {
       ttl: number;

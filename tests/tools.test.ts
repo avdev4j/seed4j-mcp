@@ -11,6 +11,7 @@ type ClientMock = {
 
 function createClientMock(): ClientMock {
   return {
+    ping: vi.fn(),
     listModules: vi.fn(),
     getModuleDetails: vi.fn(),
     getModuleDependencies: vi.fn(),
@@ -66,6 +67,7 @@ describe("MCP tool registry", () => {
   it("exposes all expected tool names", () => {
     const names = buildTools(client).map((t) => t.name);
     expect(names).toEqual([
+      "ping_seed4j",
       "list_modules",
       "get_module_details",
       "get_module_dependencies",
@@ -85,6 +87,18 @@ describe("MCP tool registry", () => {
     for (const tool of buildTools(client)) {
       expect(tool.description.length).toBeGreaterThan(0);
     }
+  });
+
+  it("ping_seed4j delegates with no timeoutMs when omitted", async () => {
+    mock.ping.mockResolvedValue('{"reachable":true}');
+    await expect(invoke(client, "ping_seed4j")).resolves.toBe('{"reachable":true}');
+    expect(mock.ping).toHaveBeenCalledWith(undefined);
+  });
+
+  it("ping_seed4j forwards an explicit timeoutMs", async () => {
+    mock.ping.mockResolvedValue("{}");
+    await invoke(client, "ping_seed4j", { timeoutMs: 2000 });
+    expect(mock.ping).toHaveBeenCalledWith(2000);
   });
 
   it("list_modules delegates to the client", async () => {

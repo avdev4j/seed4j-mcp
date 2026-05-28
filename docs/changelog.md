@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #8 — Connectivity / health-check tool
+
+- **Shipped:** 2026-05-28
+- **User impact:** new `ping_seed4j` tool answers "is seed4j actually up?" without having to call a real tool and inspect the error. Fires a fresh `/api/modules` liveness probe and a best-effort `/management/info` version probe in parallel, bypassing the catalogue cache and retry layer so the result reflects current connectivity. Returns `{ reachable, ok, baseUrl, endpoint, status, latencyMs, version, checkedAt, error? }`. Default per-call timeout is 5 s (override with `timeoutMs`).
+- **API change:** new `Seed4jClient.ping(timeoutMs?)` method. `Seed4jClient.fetchWithTimeout` gained a private optional per-call timeout override (no impact on existing callers).
+- **Docs touched:** [tools.md](tools.md), [overview.md](overview.md).
+
 ### #7 — Richer `validate_properties` (ENUM, pattern, defaults)
 
 - **Shipped:** 2026-05-28

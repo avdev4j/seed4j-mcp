@@ -27,6 +27,7 @@ Three layers, kept intentionally thin:
 3. **Server / entrypoint** — [src/server.ts](src/server.ts) builds an `McpServer` and calls `registerTools`; [src/index.ts](src/index.ts) wires `Seed4jClient` + `StdioServerTransport` and connects them. Adding a new tool = adding an entry to `buildTools`; no other wiring is required.
 
 ### Tools currently exposed
+- `ping_seed4j`
 - `list_modules`, `search_modules`, `get_module_details`, `get_module_dependencies`
 - `list_presets`, `get_preset_details`
 - `validate_properties`, `get_project_status`

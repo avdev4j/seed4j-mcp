@@ -39,6 +39,20 @@ function text(body: string): ToolResult {
 export function buildTools(client: Seed4jClient): ToolDefinition[] {
   const tools: ToolDefinition[] = [
     {
+      name: "ping_seed4j",
+      description:
+        "Check whether the configured seed4j instance is reachable. Hits /api/modules (liveness) and /management/info (version, best-effort) with a short timeout (default 5 s), bypassing the catalogue cache and the retry layer so the result reflects current connectivity. Returns {reachable, ok, baseUrl, endpoint, status, latencyMs, version, checkedAt, error?}. Call this when a real tool unexpectedly fails, before a long apply plan, or to confirm the wiring on startup.",
+      inputSchema: {
+        timeoutMs: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Per-call timeout in milliseconds. Defaults to 5000 when omitted."),
+      },
+      handler: async ({ timeoutMs }) => text(await client.ping(timeoutMs)),
+    },
+    {
       name: "list_modules",
       description:
         "List all available seed4j modules grouped by category. Returns JSON describing every module the seed4j server can apply.",

@@ -36,6 +36,9 @@ export const DEFAULT_RETRIES = 2;
 export const DEFAULT_RETRY_BASE_DELAY_MS = 200;
 export const DEFAULT_RETRY_MAX_DELAY_MS = 2_000;
 export const DEFAULT_CACHE_TTL_MS = 3_600_000;
+export const DEFAULT_PING_TIMEOUT_MS = 5_000;
+export const PING_LIVENESS_PATH = "/api/modules";
+export const PING_VERSION_PATH = "/management/info";
 
 export type SleepFn = (ms: number) => Promise<void>;
 export type NowFn = () => number;
@@ -140,6 +143,60 @@ export class Seed4jClient {
       return;
     }
     this.cache.delete(path);
+  }
+
+  async ping(timeoutMs?: number): Promise<string> {
+    const effectiveTimeout =
+      timeoutMs !== undefined && timeoutMs > 0 ? timeoutMs : DEFAULT_PING_TIMEOUT_MS;
+    const startedAt = this.now();
+    const livenessUrl = `${this.baseUrl}${PING_LIVENESS_PATH}`;
+    const livenessPromise = this.fetchWithTimeout(
+      livenessUrl,
+      { method: "GET", headers: { accept: "application/json" } },
+      effectiveTimeout,
+    );
+    const versionUrl = `${this.baseUrl}${PING_VERSION_PATH}`;
+    const versionPromise = this.fetchWithTimeout(
+      versionUrl,
+      { method: "GET", headers: { accept: "application/json" } },
+      effectiveTimeout,
+    );
+
+    const [livenessResult, versionResult] = await Promise.allSettled([
+      livenessPromise,
+      versionPromise,
+    ]);
+    const latencyMs = Math.max(0, this.now() - startedAt);
+    const version = await extractVersion(versionResult);
+    const checkedAt = new Date(this.now()).toISOString();
+
+    if (livenessResult.status === "fulfilled") {
+      const response = livenessResult.value;
+      return JSON.stringify({
+        reachable: true,
+        ok: response.ok,
+        baseUrl: this.baseUrl,
+        endpoint: PING_LIVENESS_PATH,
+        status: response.status,
+        latencyMs,
+        version,
+        checkedAt,
+      });
+    }
+
+    const error = livenessResult.reason;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return JSON.stringify({
+      reachable: false,
+      ok: false,
+      baseUrl: this.baseUrl,
+      endpoint: PING_LIVENESS_PATH,
+      status: null,
+      latencyMs,
+      version,
+      error: errorMessage,
+      checkedAt,
+    });
   }
 
   listModules(): Promise<string> {
@@ -442,9 +499,14 @@ export class Seed4jClient {
     return body;
   }
 
-  private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  private fetchWithTimeout(
+    url: string,
+    init: RequestInit,
+    timeoutMsOverride?: number,
+  ): Promise<Response> {
     const method = (init.method ?? "GET").toUpperCase();
-    const timeoutMs = this.timeoutMs;
+    const timeoutMs =
+      timeoutMsOverride && timeoutMsOverride > 0 ? timeoutMsOverride : this.timeoutMs;
     const baseHeaders = (init.headers as Record<string, string> | undefined) ?? {};
     const headers: Record<string, string> = this.authHeader
       ? { ...baseHeaders, Authorization: this.authHeader }
@@ -470,6 +532,36 @@ export class Seed4jClient {
         });
     });
   }
+}
+
+async function extractVersion(
+  result: PromiseSettledResult<Response>,
+): Promise<string | null> {
+  if (result.status !== "fulfilled") return null;
+  const response = result.value;
+  if (!response.ok) return null;
+  let body: string;
+  try {
+    body = await response.text();
+  } catch {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const root = parsed as Record<string, unknown>;
+  const direct = root.version;
+  if (typeof direct === "string" && direct.length > 0) return direct;
+  const build = root.build;
+  if (build && typeof build === "object") {
+    const buildVersion = (build as Record<string, unknown>).version;
+    if (typeof buildVersion === "string" && buildVersion.length > 0) return buildVersion;
+  }
+  return null;
 }
 
 function isRetryableGetError(error: unknown): boolean {
