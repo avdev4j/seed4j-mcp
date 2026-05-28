@@ -17,3 +17,6 @@ logs/
 
 ### OS ###
 .DS_Store
+
+### Local-only working notes ###
+notes/

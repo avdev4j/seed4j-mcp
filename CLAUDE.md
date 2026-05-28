@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo is a **side project of seed4j**, deliberately kept out of the main seed4j repository. Treat seed4j as an external service: this server talks to a running seed4j instance over HTTP, it does not embed seed4j as a library.
 
-Planned improvements are tracked in [ROADMAP.md](ROADMAP.md) as numbered features (1–16). Each entry has a What/Why/Where/Done-when spec so a single item can be picked up and implemented in isolation — consult it before starting new work.
+Planned improvements are tracked in [docs/ROADMAP.md](docs/ROADMAP.md) as numbered features (1–16). Each entry has a What/Why/Where/Done-when spec so a single item can be picked up and implemented in isolation — consult it before starting new work.
 
 ## Tech Stack
 
@@ -71,3 +71,18 @@ npx vitest run -t "applyModules"
 2. Add an entry to `buildTools` in [src/tools.ts](src/tools.ts): name, description (LLM-facing — state what it does, when to use it, how it relates to the other tools), zod `inputSchema` shape, and a handler that delegates to the client.
 3. No registration step beyond that — `registerTools` iterates `buildTools` and wires each entry into the MCP server.
 4. Add a unit test in [tests/tools.test.ts](tests/tools.test.ts) (delegation) and, if you added a non-trivial transform on the client side, in [tests/client.test.ts](tests/client.test.ts).
+
+## Roadmap execution workflow (MUST follow for every roadmap item)
+
+When the user asks to "execute the roadmap", "work on item N", or otherwise picks up a [docs/ROADMAP.md](docs/ROADMAP.md) entry, follow this loop for **each** item — do not skip steps even if the conversation is fresh:
+
+1. **Explain before coding.** Before touching any source file, post a short summary covering:
+   - **What it covers** — the scope of the change in plain language.
+   - **Goal** — why it matters for the project / users.
+   - **User-visible output** — what an MCP client / agent will see differently once it ships (new tool, new field, new error shape, env var, etc.).
+   Wait for the user to react / approve before proceeding with the implementation.
+2. **Keep the docs alive.** Maintain the [docs/](docs/) folder, which documents the **current** state of the MCP server (overview, tools, configuration, errors, client setup, develop, changelog). Every roadmap item must update the relevant `docs/` pages so the documentation always reflects what is shipped — never leave the docs stale. Append a per-item entry to [docs/changelog.md](docs/changelog.md).
+3. **Suggest a commit, do not commit.** When the implementation + tests + docs are done, propose a commit message (subject + body), but **never** run `git commit`. The user commits themselves.
+4. **Mark the roadmap entry done.** Edit [docs/ROADMAP.md](docs/ROADMAP.md) to flag the completed item (e.g. prepend `✅ ` to the heading or strike it through) so the next iteration picks the next open item.
+
+These rules are sticky — they apply for the whole roadmap, across sessions, until every item is done.
