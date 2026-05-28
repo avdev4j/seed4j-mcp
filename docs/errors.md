@@ -46,8 +46,19 @@ Some client methods throw plain `Error`s before any HTTP call:
 | `getModuleDependencies` | the slug is not found in the landscape. |
 | `validateProperties` | (does not throw — returns `{ valid: false, errors }`). |
 
+## Retries on transient GET failures
+
+Read-only GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/modules-landscape`, `/api/projects?path=…`) are automatically retried inside `Seed4jClient` when the failure looks transient:
+
+- **Retryable:** `TimeoutError`, HTTP 5xx (`HttpError` with `status >= 500`), and other thrown errors (e.g. network errors from `fetch` itself).
+- **Not retryable:** HTTP 4xx (`HttpError` with `status < 500`) — these are deterministic (auth, bad slug, malformed query).
+- **Not retried at all:** POSTs to `apply-patch`. Re-running a half-applied module could leave the project in an inconsistent state — that decision belongs to the agent, not the transport layer.
+
+Backoff is capped exponential: `min(retryBaseDelayMs * 2^attempt, retryMaxDelayMs)`. Defaults are `retries = 2` (so up to 3 attempts), `retryBaseDelayMs = 200`, `retryMaxDelayMs = 2_000`. When all attempts fail, the **last** error propagates unchanged (so callers can still match on `HttpError.status` / `TimeoutError`).
+
+Env-driven configuration (`SEED4J_RETRIES`, plus the existing `SEED4J_TIMEOUT_MS`) is tracked as roadmap #3.
+
 ## Known gaps (tracked in the roadmap)
 
-- **No retries** — transient 5xx / network blips still fail the whole tool call (#2).
-- **Timeout is not yet env-configurable** — the 30 s default is hardcoded; `SEED4J_TIMEOUT_MS` lands with #3.
+- **Timeout / retries are not yet env-configurable** — defaults are hardcoded; `SEED4J_TIMEOUT_MS` and `SEED4J_RETRIES` land with #3.
 - **Raw error bodies** — long stack traces and HTML error pages from seed4j flow through unchanged (#4 will summarise and switch to `isError: true` results).

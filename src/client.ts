@@ -32,6 +32,13 @@ export class TimeoutError extends Error {
 }
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
+export const DEFAULT_RETRIES = 2;
+export const DEFAULT_RETRY_BASE_DELAY_MS = 200;
+export const DEFAULT_RETRY_MAX_DELAY_MS = 2_000;
+
+export type SleepFn = (ms: number) => Promise<void>;
+
+const defaultSleep: SleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface ValidationIssue {
   key: string;
@@ -51,18 +58,37 @@ interface FailureEntry {
 
 export interface Seed4jClientOptions {
   timeoutMs?: number;
+  retries?: number;
+  retryBaseDelayMs?: number;
+  retryMaxDelayMs?: number;
+  sleep?: SleepFn;
 }
 
 export class Seed4jClient {
   private readonly timeoutMs: number;
+  private readonly retries: number;
+  private readonly retryBaseDelayMs: number;
+  private readonly retryMaxDelayMs: number;
+  private readonly sleep: SleepFn;
 
   constructor(
     private readonly baseUrl: string,
     private readonly fetcher: FetchLike = fetch,
     options: Seed4jClientOptions = {},
   ) {
-    const requested = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.timeoutMs = requested > 0 ? requested : DEFAULT_TIMEOUT_MS;
+    const requestedTimeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.timeoutMs = requestedTimeout > 0 ? requestedTimeout : DEFAULT_TIMEOUT_MS;
+
+    const requestedRetries = options.retries ?? DEFAULT_RETRIES;
+    this.retries = requestedRetries >= 0 ? Math.floor(requestedRetries) : 0;
+
+    const requestedBase = options.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS;
+    this.retryBaseDelayMs = requestedBase > 0 ? requestedBase : DEFAULT_RETRY_BASE_DELAY_MS;
+
+    const requestedMax = options.retryMaxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS;
+    this.retryMaxDelayMs = requestedMax > 0 ? requestedMax : DEFAULT_RETRY_MAX_DELAY_MS;
+
+    this.sleep = options.sleep ?? defaultSleep;
   }
 
   listModules(): Promise<string> {
@@ -202,15 +228,17 @@ export class Seed4jClient {
 
   async getProjectStatus(projectFolder: string): Promise<string> {
     const url = `${this.baseUrl}/api/projects?path=${encodeURIComponent(projectFolder)}`;
-    const response = await this.fetchWithTimeout(url, {
-      method: "GET",
-      headers: { accept: "application/json" },
+    return this.withRetries(async () => {
+      const response = await this.fetchWithTimeout(url, {
+        method: "GET",
+        headers: { accept: "application/json" },
+      });
+      const body = await response.text();
+      if (!response.ok) {
+        throw new HttpError(response.status, body, url);
+      }
+      return body;
     });
-    const body = await response.text();
-    if (!response.ok) {
-      throw new HttpError(response.status, body, url);
-    }
-    return body;
   }
 
   async searchModules(query: string, limit: number): Promise<string> {
@@ -276,15 +304,37 @@ export class Seed4jClient {
 
   private async getText(path: string): Promise<string> {
     const url = `${this.baseUrl}${path}`;
-    const response = await this.fetchWithTimeout(url, {
-      method: "GET",
-      headers: { accept: "application/json" },
+    return this.withRetries(async () => {
+      const response = await this.fetchWithTimeout(url, {
+        method: "GET",
+        headers: { accept: "application/json" },
+      });
+      const body = await response.text();
+      if (!response.ok) {
+        throw new HttpError(response.status, body, url);
+      }
+      return body;
     });
-    const body = await response.text();
-    if (!response.ok) {
-      throw new HttpError(response.status, body, url);
+  }
+
+  private async withRetries<T>(operation: () => Promise<T>): Promise<T> {
+    let attempt = 0;
+    let lastError: unknown;
+    while (attempt <= this.retries) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt === this.retries || !isRetryableGetError(error)) {
+          throw error;
+        }
+        const exponent = Math.min(attempt, 10);
+        const delay = Math.min(this.retryBaseDelayMs * 2 ** exponent, this.retryMaxDelayMs);
+        await this.sleep(delay);
+        attempt += 1;
+      }
     }
-    return body;
+    throw lastError;
   }
 
   private async postJson(path: string, payload: unknown): Promise<string> {
@@ -325,6 +375,12 @@ export class Seed4jClient {
         });
     });
   }
+}
+
+function isRetryableGetError(error: unknown): boolean {
+  if (error instanceof TimeoutError) return true;
+  if (error instanceof HttpError) return error.status >= 500;
+  return error instanceof Error;
 }
 
 function checkType(type: string, value: unknown): string | null {

@@ -15,11 +15,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** A request that exceeds the timeout rejects with a clear, agent-readable error; covered by a test using a fake fetch that never resolves.
 - **Shipped:** 2026-05-28 — `Seed4jClient` now accepts `{ timeoutMs }` (default 30 s) and raises `TimeoutError` on hangs. Env wiring (`SEED4J_TIMEOUT_MS`) follows in #3. See [changelog.md](changelog.md#1--http-timeouts-and-abort).
 
-### 2. Retry with backoff on transient failures
+### ✅ 2. Retry with backoff on transient failures
 - **What:** Retry idempotent GET calls (catalogue, details, landscape, presets, status) on network errors and 5xx, with capped exponential backoff. Do **not** retry POST/apply-patch by default.
 - **Why:** seed4j may be briefly unavailable during startup; agents shouldn't fail a whole plan on a transient blip.
 - **Where:** [src/client.ts](../src/client.ts).
 - **Done when:** GETs retry up to N times then surface the last error; POSTs are never silently retried; behaviour is unit-tested.
+- **Shipped:** 2026-05-28 — `Seed4jClient` retries `TimeoutError` / network errors / HTTP 5xx on GETs (default 2 retries, capped exponential backoff). 4xx and POSTs are never silently retried. Env wiring (`SEED4J_RETRIES`) follows in #3. See [changelog.md](changelog.md#2--retry-with-backoff-on-transient-failures).
 
 ### 3. Configurable client via env vars
 - **What:** Read `SEED4J_TIMEOUT_MS`, `SEED4J_RETRIES`, and optional `SEED4J_AUTH_HEADER` / bearer token from the environment in [src/index.ts](../src/index.ts) and pass them into `Seed4jClient`.

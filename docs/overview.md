@@ -34,5 +34,7 @@ These paths are inherited from the JHipster-Lite-style API. Verify them against 
 
 ## Reliability
 
-- **Per-request timeout.** Every outbound `fetch` is wrapped with an `AbortController` armed for a configurable timeout (default 30 s). When it fires, the request is aborted and the tool call rejects with a `TimeoutError` instead of stalling the MCP client — see [errors.md](errors.md). Env-driven configuration of the value is tracked as roadmap #3.
-- **Retries, structured errors, caching** are not yet in place — see roadmap items #2, #4, #5.
+- **Per-request timeout.** Every outbound `fetch` is wrapped with an `AbortController` armed for a configurable timeout (default 30 s). When it fires, the request is aborted and the tool call rejects with a `TimeoutError` instead of stalling the MCP client — see [errors.md](errors.md).
+- **Retries on idempotent GETs.** GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/modules-landscape`, `/api/projects?path=…`) are retried up to `retries` times (default **2**, so up to 3 attempts) on `TimeoutError`, network errors, and HTTP 5xx responses. Backoff is capped exponential (default base 200 ms, cap 2 s). HTTP 4xx is **not** retried — those are deterministic. POSTs to `apply-patch` are **never** silently retried; an aborted apply could leave the project half-mutated, so retry is left to the agent.
+- **Env-driven configuration** of these knobs (`SEED4J_TIMEOUT_MS`, `SEED4J_RETRIES`) is tracked as roadmap #3.
+- **Structured errors and caching** are not yet in place — see roadmap items #4 and #5.

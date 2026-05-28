@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #2 — Retry with backoff on transient failures
+
+- **Shipped:** 2026-05-28
+- **User impact:** transient seed4j failures on read-only endpoints (network glitches, timeouts, HTTP 5xx) no longer fail the whole tool call. GETs are retried up to twice (3 attempts total) with capped exponential backoff before surfacing the last error. HTTP 4xx and POST `apply-patch` calls are never silently retried.
+- **API change:** `Seed4jClient` accepts three new optional options — `retries` (default 2), `retryBaseDelayMs` (default 200), `retryMaxDelayMs` (default 2000) — plus an injectable `sleep` for testing. Env wiring (`SEED4J_RETRIES`) lands with roadmap #3.
+- **Docs touched:** [overview.md](overview.md), [errors.md](errors.md), [configuration.md](configuration.md).
+
 ### #1 — HTTP timeouts and abort
 
 - **Shipped:** 2026-05-28

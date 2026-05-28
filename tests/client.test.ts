@@ -365,6 +365,133 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("request retries", () => {
+    function serverError(body: string, status = 503) {
+      return new Response(body, { status });
+    }
+
+    it("retries a GET on 5xx and returns the eventually-successful body", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const responses = [
+        serverError("starting"),
+        serverError("starting"),
+        new Response('{"categories":[]}', { status: 200 }),
+      ];
+      const fetcher: FetchLike = vi.fn(async () => responses.shift()!);
+      const retrying = new Seed4jClient(BASE_URL, fetcher, {
+        retries: 2,
+        retryBaseDelayMs: 1,
+        sleep,
+      });
+
+      await expect(retrying.listModules()).resolves.toBe('{"categories":[]}');
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      expect(sleep).toHaveBeenCalledTimes(2);
+    });
+
+    it("exhausts retries and surfaces the last HttpError on persistent 5xx", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const fetcher: FetchLike = vi.fn(async () => serverError("boom"));
+      const retrying = new Seed4jClient(BASE_URL, fetcher, {
+        retries: 2,
+        retryBaseDelayMs: 1,
+        sleep,
+      });
+
+      const error = await retrying.listModules().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(HttpError);
+      expect((error as HttpError).status).toBe(503);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+    });
+
+    it("does not retry a GET on 4xx", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const fetcher: FetchLike = vi.fn(async () => new Response("nope", { status: 400 }));
+      const retrying = new Seed4jClient(BASE_URL, fetcher, {
+        retries: 5,
+        retryBaseDelayMs: 1,
+        sleep,
+      });
+
+      await expect(retrying.listModules()).rejects.toBeInstanceOf(HttpError);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it("retries on TimeoutError and surfaces it after exhausting attempts", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const hangingFetch: FetchLike = vi.fn(
+        (_input, init) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          }),
+      );
+      const retrying = new Seed4jClient(BASE_URL, hangingFetch, {
+        retries: 1,
+        retryBaseDelayMs: 1,
+        timeoutMs: 5,
+        sleep,
+      });
+
+      const error = await retrying.listModules().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(TimeoutError);
+      expect(hangingFetch).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not retry POSTs (apply-patch) on 5xx", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const fetcher: FetchLike = vi.fn(async () => serverError("boom"));
+      const retrying = new Seed4jClient(BASE_URL, fetcher, {
+        retries: 3,
+        retryBaseDelayMs: 1,
+        sleep,
+      });
+
+      await expect(
+        retrying.applyModule("maven-java", "/tmp/app", {}),
+      ).rejects.toBeInstanceOf(HttpError);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it("retries getProjectStatus (the inline GET) on 5xx", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const responses = [
+        serverError("starting"),
+        new Response('{"appliedModules":[]}', { status: 200 }),
+      ];
+      const fetcher: FetchLike = vi.fn(async () => responses.shift()!);
+      const retrying = new Seed4jClient(BASE_URL, fetcher, {
+        retries: 2,
+        retryBaseDelayMs: 1,
+        sleep,
+      });
+
+      await expect(retrying.getProjectStatus("/tmp/app")).resolves.toBe(
+        '{"appliedModules":[]}',
+      );
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+
+    it("applies exponential backoff capped by retryMaxDelayMs", async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const fetcher: FetchLike = vi.fn(async () => serverError("boom"));
+      const retrying = new Seed4jClient(BASE_URL, fetcher, {
+        retries: 4,
+        retryBaseDelayMs: 100,
+        retryMaxDelayMs: 250,
+        sleep,
+      });
+
+      await retrying.listModules().catch(() => undefined);
+      const delays = sleep.mock.calls.map((call) => call[0] as number);
+      expect(delays).toEqual([100, 200, 250, 250]);
+    });
+  });
+
   describe("request timeouts", () => {
     it("rejects with TimeoutError when a GET never resolves", async () => {
       const hangingFetch: FetchLike = vi.fn(
@@ -375,7 +502,7 @@ describe("Seed4jClient", () => {
             });
           }),
       );
-      const fastClient = new Seed4jClient(BASE_URL, hangingFetch, { timeoutMs: 20 });
+      const fastClient = new Seed4jClient(BASE_URL, hangingFetch, { timeoutMs: 20, retries: 0 });
 
       const error = await fastClient.listModules().catch((e: unknown) => e);
       expect(error).toBeInstanceOf(TimeoutError);
@@ -394,7 +521,7 @@ describe("Seed4jClient", () => {
             });
           }),
       );
-      const fastClient = new Seed4jClient(BASE_URL, hangingFetch, { timeoutMs: 20 });
+      const fastClient = new Seed4jClient(BASE_URL, hangingFetch, { timeoutMs: 20, retries: 0 });
 
       const error = await fastClient
         .applyModule("maven-java", "/tmp/app", {})
