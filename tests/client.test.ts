@@ -597,6 +597,344 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("removeModule", () => {
+    type ModuleApply = (scratchDir: string, props: Record<string, unknown>) => Promise<void>;
+
+    function removeFixture() {
+      const tmp: string[] = [];
+
+      const newTmp = async (prefix = "remove-test-") => {
+        const dir = await mkdtemp(path.join(tmpdir(), prefix));
+        tmp.push(dir);
+        return dir;
+      };
+
+      const cleanup = async () => {
+        for (const dir of tmp) {
+          await rm(dir, { recursive: true, force: true });
+        }
+      };
+
+      const buildClient = (applies: Record<string, ModuleApply>) => {
+        const fetcher: FetchLike = vi.fn(async (input, init) => {
+          const url = input.toString();
+          const match = url.match(/\/api\/modules\/([^/]+)\/apply-patch$/);
+          if (!match) throw new Error(`unexpected url ${url}`);
+          const slug = decodeURIComponent(match[1]!);
+          const body = JSON.parse(init?.body as string) as {
+            projectFolder?: string;
+            parameters?: Record<string, unknown>;
+          };
+          const handler = applies[slug];
+          if (handler && body.projectFolder) {
+            await handler(body.projectFolder, body.parameters ?? {});
+          }
+          return new Response('{"status":"ok"}', { status: 200 });
+        });
+        return new Seed4jClient(BASE_URL, fetcher, { retries: 0 });
+      };
+
+      async function plantHistory(
+        projectFolder: string,
+        actions: Array<{ module: string; properties?: Record<string, unknown> }>,
+      ) {
+        const dir = path.join(projectFolder, ".seed4j", "modules");
+        await mkdir(dir, { recursive: true });
+        const file = path.join(dir, "history.json");
+        await writeFile(
+          file,
+          JSON.stringify(
+            {
+              actions: actions.map((a, i) => ({
+                module: a.module,
+                date: `2026-05-29T11:00:${String(i).padStart(2, "0")}Z`,
+                properties: a.properties ?? {},
+              })),
+            },
+            null,
+            2,
+          ),
+        );
+      }
+
+      return { newTmp, cleanup, buildClient, plantHistory };
+    }
+
+    it("returns action: 'not-applied' when history.json is missing", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        const remover = fx.buildClient({});
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("not-applied");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("returns action: 'not-applied' when the slug is not in history", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+        const remover = fx.buildClient({});
+
+        const payload = JSON.parse(await remover.removeModule("spring-boot", projectFolder, {}));
+        expect(payload.action).toBe("not-applied");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("preview returns filesToDelete for a clean-install added file", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [
+          { module: "init" },
+          { module: "maven-java", properties: { packageName: "com.example" } },
+        ]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<maven/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+        });
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("preview");
+        expect(payload.filesToDelete).toEqual([{ path: "pom.xml", sizeBytes: "<maven/>".length }]);
+        expect(payload.locallyModifiedFiles).toEqual([]);
+        expect(payload.historyUpdate).toEqual({ currentActions: 2, afterRemoval: 1 });
+
+        const stillThere = await readFile(path.join(projectFolder, "pom.xml"), "utf8");
+        expect(stillThere).toBe("<maven/>");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("preview flags a locally-modified added file (not in filesToDelete)", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<MODIFIED BY USER/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+        });
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("preview");
+        expect(payload.filesToDelete).toEqual([]);
+        expect(payload.locallyModifiedFiles).toHaveLength(1);
+        expect(payload.locallyModifiedFiles[0]).toMatchObject({
+          path: "pom.xml",
+          kind: "added",
+          installedSizeBytes: "<maven/>".length,
+        });
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("preview returns filesToRevert when the target modified an existing file (clean install)", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+        await writeFile(path.join(projectFolder, ".gitignore"), "node_modules\ntarget\n");
+
+        const remover = fx.buildClient({
+          init: async (dir) => {
+            await writeFile(path.join(dir, ".gitignore"), "node_modules\n");
+          },
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, ".gitignore"), "node_modules\ntarget\n");
+          },
+        });
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("preview");
+        expect(payload.filesToRevert).toEqual([
+          {
+            path: ".gitignore",
+            currentSizeBytes: "node_modules\ntarget\n".length,
+            revertedSizeBytes: "node_modules\n".length,
+          },
+        ]);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("confirm deletes clean files, reverts modified files, and updates history.json", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<maven/>");
+        await writeFile(path.join(projectFolder, ".gitignore"), "node_modules\ntarget\n");
+        await writeFile(path.join(projectFolder, "untouched.txt"), "keep me");
+
+        const remover = fx.buildClient({
+          init: async (dir) => {
+            await writeFile(path.join(dir, ".gitignore"), "node_modules\n");
+          },
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+            await writeFile(path.join(dir, ".gitignore"), "node_modules\ntarget\n");
+          },
+        });
+
+        const payload = JSON.parse(
+          await remover.removeModule("maven-java", projectFolder, { confirm: true }),
+        );
+        expect(payload.action).toBe("removed");
+        expect(payload.deleted).toEqual(["pom.xml"]);
+        expect(payload.reverted).toEqual([".gitignore"]);
+        expect(payload.historyUpdated).toBe(true);
+
+        await expect(access(path.join(projectFolder, "pom.xml"))).rejects.toThrow();
+        const reverted = await readFile(path.join(projectFolder, ".gitignore"), "utf8");
+        expect(reverted).toBe("node_modules\n");
+        const kept = await readFile(path.join(projectFolder, "untouched.txt"), "utf8");
+        expect(kept).toBe("keep me");
+
+        const history = JSON.parse(
+          await readFile(path.join(projectFolder, ".seed4j", "modules", "history.json"), "utf8"),
+        );
+        expect(history.actions).toHaveLength(1);
+        expect(history.actions[0].module).toBe("init");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("confirm without force skips locally-modified files and leaves them on disk", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<USER WROTE THIS/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+        });
+
+        const payload = JSON.parse(
+          await remover.removeModule("maven-java", projectFolder, { confirm: true }),
+        );
+        expect(payload.action).toBe("removed");
+        expect(payload.deleted).toEqual([]);
+        expect(payload.skippedLocallyModified).toEqual(["pom.xml"]);
+
+        const stillThere = await readFile(path.join(projectFolder, "pom.xml"), "utf8");
+        expect(stillThere).toBe("<USER WROTE THIS/>");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("confirm with force deletes locally-modified added files too", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<USER WROTE THIS/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+        });
+
+        const payload = JSON.parse(
+          await remover.removeModule("maven-java", projectFolder, {
+            confirm: true,
+            force: true,
+          }),
+        );
+        expect(payload.action).toBe("removed");
+        expect(payload.deleted).toContain("pom.xml");
+        expect(payload.skippedLocallyModified).toEqual([]);
+
+        await expect(access(path.join(projectFolder, "pom.xml"))).rejects.toThrow();
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("replays each action with its OWN properties (not aggregated)", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [
+          { module: "init", properties: { baseName: "first" } },
+          { module: "maven-java", properties: { packageName: "com.example.second" } },
+        ]);
+
+        const capturedProperties: Array<{ slug: string; props: Record<string, unknown> }> = [];
+        const remover = fx.buildClient({
+          init: async (_dir, props) => {
+            capturedProperties.push({ slug: "init", props });
+          },
+          "maven-java": async (_dir, props) => {
+            capturedProperties.push({ slug: "maven-java", props });
+          },
+        });
+
+        await remover.removeModule("maven-java", projectFolder, {});
+
+        const initProps = capturedProperties.filter((c) => c.slug === "init");
+        const mavenProps = capturedProperties.filter((c) => c.slug === "maven-java");
+        expect(initProps.length).toBeGreaterThan(0);
+        expect(initProps[0]?.props).toEqual({ baseName: "first" });
+        expect(mavenProps.length).toBeGreaterThan(0);
+        expect(mavenProps[0]?.props).toEqual({ packageName: "com.example.second" });
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("cleans up scratch dirs when a mid-replay apply throws", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [{ module: "init" }, { module: "maven-java" }]);
+
+        const beforeScratches = new Set<string>();
+        const fetcher: FetchLike = vi.fn(async (_input, init) => {
+          const body = JSON.parse(init?.body as string) as { projectFolder?: string };
+          if (body.projectFolder) beforeScratches.add(body.projectFolder);
+          return new Response("boom", { status: 500 });
+        });
+        const failing = new Seed4jClient(BASE_URL, fetcher, { retries: 0 });
+
+        await expect(failing.removeModule("maven-java", projectFolder, {})).rejects.toBeInstanceOf(
+          HttpError,
+        );
+
+        for (const scratch of beforeScratches) {
+          await expect(access(scratch)).rejects.toThrow();
+        }
+      } finally {
+        await fx.cleanup();
+      }
+    });
+  });
+
   describe("previewModule", () => {
     type ApplyEffect = (scratchDir: string) => Promise<void>;
 

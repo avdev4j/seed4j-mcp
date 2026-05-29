@@ -32,7 +32,7 @@ Three layers, kept intentionally thin:
 - `list_modules`, `search_modules`, `get_module_details`, `get_module_dependencies`
 - `list_presets`, `get_preset_details`
 - `validate_properties`, `preview_module`, `get_project_status`
-- `create_project`, `apply_module`, `apply_modules`, `apply_preset`
+- `create_project`, `apply_module`, `apply_modules`, `apply_preset`, `remove_module`
 
 ### Resources currently exposed
 

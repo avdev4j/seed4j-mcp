@@ -23,6 +23,7 @@ function createClientMock(): ClientMock {
     createProject: vi.fn(),
     validateProperties: vi.fn(),
     previewModule: vi.fn(),
+    removeModule: vi.fn(),
     applyModules: vi.fn(),
     applyPreset: vi.fn(),
   } as unknown as ClientMock;
@@ -78,6 +79,7 @@ describe("MCP tool registry", () => {
       "get_project_status",
       "apply_module",
       "create_project",
+      "remove_module",
       "preview_module",
       "validate_properties",
       "apply_modules",
@@ -198,6 +200,32 @@ describe("MCP tool registry", () => {
       commit: true,
     });
     expect(mock.createProject).toHaveBeenCalledWith("/tmp/app", { baseName: "myapp" }, true);
+  });
+
+  it("remove_module defaults confirm and force to false when omitted", async () => {
+    mock.removeModule.mockResolvedValue('{"action":"preview"}');
+    await invoke(client, "remove_module", {
+      moduleSlug: "maven-java",
+      projectFolder: "/tmp/app",
+    });
+    expect(mock.removeModule).toHaveBeenCalledWith("maven-java", "/tmp/app", {
+      confirm: false,
+      force: false,
+    });
+  });
+
+  it("remove_module forwards explicit confirm and force flags", async () => {
+    mock.removeModule.mockResolvedValue('{"action":"removed"}');
+    await invoke(client, "remove_module", {
+      moduleSlug: "maven-java",
+      projectFolder: "/tmp/app",
+      confirm: true,
+      force: true,
+    });
+    expect(mock.removeModule).toHaveBeenCalledWith("maven-java", "/tmp/app", {
+      confirm: true,
+      force: true,
+    });
   });
 
   it("preview_module forwards properties as an object", async () => {

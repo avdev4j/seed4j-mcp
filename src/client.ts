@@ -1,4 +1,14 @@
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -101,6 +111,47 @@ interface PreviewChange {
 }
 
 const PREVIEW_SKIP_SEGMENTS = new Set([".git"]);
+const REMOVE_SKIP_SEGMENTS = new Set([".git", ".seed4j"]);
+
+const SEED4J_HISTORY_DIR = ".seed4j/modules";
+const SEED4J_HISTORY_FILE = "history.json";
+
+// Contract: docs/seed4j-api.md#project-local-files
+// .seed4j/modules/history.json shape inside a seed4j project folder.
+interface SeedHistoryAction {
+  module: string;
+  date: string;
+  properties: Properties;
+}
+
+interface SeedHistory {
+  actions: SeedHistoryAction[];
+}
+
+interface RemoveModuleOptions {
+  confirm?: boolean;
+  force?: boolean;
+}
+
+interface RemoveDeletePlan {
+  path: string;
+  sizeBytes: number;
+}
+
+interface RemoveRevertPlan {
+  path: string;
+  currentSizeBytes: number;
+  revertedSizeBytes: number;
+}
+
+type LocallyModifiedKind = "added" | "modified";
+
+interface LocallyModifiedFile {
+  path: string;
+  kind: LocallyModifiedKind;
+  currentSizeBytes: number;
+  installedSizeBytes: number;
+}
 
 export interface Seed4jClientOptions {
   timeoutMs?: number;
@@ -328,6 +379,160 @@ export class Seed4jClient {
   ): Promise<string> {
     await mkdir(projectFolder, { recursive: true });
     return this.applyModule("init", projectFolder, properties, commit);
+  }
+
+  async removeModule(
+    moduleSlug: string,
+    projectFolder: string,
+    options: RemoveModuleOptions = {},
+  ): Promise<string> {
+    const confirm = !!options.confirm;
+    const force = !!options.force;
+
+    const history = await readSeed4jHistory(projectFolder);
+    if (!history || history.actions.length === 0) {
+      return JSON.stringify({
+        moduleSlug,
+        projectFolder,
+        action: "not-applied",
+      });
+    }
+    const actionIndex = lastIndexOfSlug(history.actions, moduleSlug);
+    if (actionIndex === -1) {
+      return JSON.stringify({
+        moduleSlug,
+        projectFolder,
+        action: "not-applied",
+      });
+    }
+
+    const withTargetDir = await mkdtemp(path.join(tmpdir(), "seed4j-remove-with-"));
+    const withoutTargetDir = await mkdtemp(path.join(tmpdir(), "seed4j-remove-without-"));
+    try {
+      const withActions = history.actions.slice(0, actionIndex + 1);
+      const withoutActions = history.actions.filter(
+        (_: SeedHistoryAction, i: number) => i !== actionIndex,
+      );
+      for (const action of withActions) {
+        await this.applyModule(action.module, withTargetDir, action.properties ?? {}, false);
+      }
+      for (const action of withoutActions) {
+        await this.applyModule(action.module, withoutTargetDir, action.properties ?? {}, false);
+      }
+
+      const withSnapshot = await snapshotFiles(withTargetDir, REMOVE_SKIP_SEGMENTS);
+      const withoutSnapshot = await snapshotFiles(withoutTargetDir, REMOVE_SKIP_SEGMENTS);
+      const currentSnapshot = await snapshotFiles(projectFolder, REMOVE_SKIP_SEGMENTS);
+
+      const filesToDelete: RemoveDeletePlan[] = [];
+      const filesToRevert: RemoveRevertPlan[] = [];
+      const locallyModifiedFiles: LocallyModifiedFile[] = [];
+
+      for (const [relPath, withBytes] of withSnapshot) {
+        const withoutBytes = withoutSnapshot.get(relPath);
+        const currentBytes = currentSnapshot.get(relPath);
+        const isAdded = withoutBytes === undefined;
+        const isModified = withoutBytes !== undefined && !withoutBytes.equals(withBytes);
+        if (!isAdded && !isModified) continue;
+
+        if (currentBytes === undefined || !currentBytes.equals(withBytes)) {
+          locallyModifiedFiles.push({
+            path: relPath,
+            kind: isAdded ? "added" : "modified",
+            currentSizeBytes: currentBytes?.length ?? 0,
+            installedSizeBytes: withBytes.length,
+          });
+          continue;
+        }
+
+        if (isAdded) {
+          filesToDelete.push({ path: relPath, sizeBytes: withBytes.length });
+        } else {
+          filesToRevert.push({
+            path: relPath,
+            currentSizeBytes: currentBytes.length,
+            revertedSizeBytes: withoutBytes!.length,
+          });
+        }
+      }
+      filesToDelete.sort((a, b) => a.path.localeCompare(b.path));
+      filesToRevert.sort((a, b) => a.path.localeCompare(b.path));
+      locallyModifiedFiles.sort((a, b) => a.path.localeCompare(b.path));
+
+      if (!confirm) {
+        return JSON.stringify({
+          moduleSlug,
+          projectFolder,
+          action: "preview",
+          actionIndex,
+          modulesReplayed: withoutActions.length,
+          filesToDelete,
+          filesToRevert,
+          locallyModifiedFiles,
+          historyUpdate: {
+            currentActions: history.actions.length,
+            afterRemoval: history.actions.length - 1,
+          },
+        });
+      }
+
+      const deleted: string[] = [];
+      const reverted: string[] = [];
+      const skippedLocallyModified: string[] = [];
+
+      for (const plan of filesToDelete) {
+        await rm(path.join(projectFolder, plan.path), { force: true });
+        deleted.push(plan.path);
+      }
+      for (const plan of filesToRevert) {
+        const bytes = withoutSnapshot.get(plan.path)!;
+        const target = path.join(projectFolder, plan.path);
+        await mkdir(path.dirname(target), { recursive: true });
+        await writeFile(target, bytes);
+        reverted.push(plan.path);
+      }
+      for (const entry of locallyModifiedFiles) {
+        if (!force) {
+          skippedLocallyModified.push(entry.path);
+          continue;
+        }
+        const target = path.join(projectFolder, entry.path);
+        if (entry.kind === "added") {
+          await rm(target, { force: true });
+          deleted.push(entry.path);
+        } else {
+          const bytes = withoutSnapshot.get(entry.path)!;
+          await mkdir(path.dirname(target), { recursive: true });
+          await writeFile(target, bytes);
+          reverted.push(entry.path);
+        }
+      }
+      deleted.sort();
+      reverted.sort();
+      skippedLocallyModified.sort();
+
+      const updatedHistory: SeedHistory = {
+        actions: history.actions.filter((_: SeedHistoryAction, i: number) => i !== actionIndex),
+      };
+      await writeSeed4jHistoryAtomic(projectFolder, updatedHistory);
+
+      return JSON.stringify({
+        moduleSlug,
+        projectFolder,
+        action: "removed",
+        actionIndex,
+        deletedCount: deleted.length,
+        deleted,
+        revertedCount: reverted.length,
+        reverted,
+        skippedLocallyModifiedCount: skippedLocallyModified.length,
+        skippedLocallyModified,
+        historyUpdated: true,
+      });
+    } finally {
+      await rm(withTargetDir, { recursive: true, force: true });
+      await rm(withoutTargetDir, { recursive: true, force: true });
+    }
   }
 
   async previewModule(
@@ -640,9 +845,12 @@ async function directoryExists(folder: string): Promise<boolean> {
   }
 }
 
-async function snapshotFiles(root: string): Promise<Map<string, Buffer>> {
+async function snapshotFiles(
+  root: string,
+  skipSegments: ReadonlySet<string> = PREVIEW_SKIP_SEGMENTS,
+): Promise<Map<string, Buffer>> {
   const snapshot = new Map<string, Buffer>();
-  await walkInto(root, root, snapshot);
+  await walkInto(root, root, snapshot, skipSegments);
   return snapshot;
 }
 
@@ -650,13 +858,14 @@ async function walkInto(
   root: string,
   current: string,
   snapshot: Map<string, Buffer>,
+  skipSegments: ReadonlySet<string>,
 ): Promise<void> {
   const entries = await readdir(current, { withFileTypes: true });
   for (const entry of entries) {
-    if (PREVIEW_SKIP_SEGMENTS.has(entry.name)) continue;
+    if (skipSegments.has(entry.name)) continue;
     const absolute = path.join(current, entry.name);
     if (entry.isDirectory()) {
-      await walkInto(root, absolute, snapshot);
+      await walkInto(root, absolute, snapshot, skipSegments);
       continue;
     }
     if (!entry.isFile()) continue;
@@ -664,6 +873,59 @@ async function walkInto(
     const bytes = await readFile(absolute);
     snapshot.set(relative, bytes);
   }
+}
+
+async function readSeed4jHistory(projectFolder: string): Promise<SeedHistory | null> {
+  const filePath = path.join(projectFolder, SEED4J_HISTORY_DIR, SEED4J_HISTORY_FILE);
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const root = parsed as { actions?: unknown };
+  if (!Array.isArray(root.actions)) return { actions: [] };
+  const actions: SeedHistoryAction[] = [];
+  for (const item of root.actions) {
+    if (!item || typeof item !== "object") continue;
+    const candidate = item as Record<string, unknown>;
+    const module = typeof candidate.module === "string" ? candidate.module : null;
+    if (!module) continue;
+    const date = typeof candidate.date === "string" ? candidate.date : "";
+    const properties =
+      candidate.properties && typeof candidate.properties === "object"
+        ? (candidate.properties as Properties)
+        : {};
+    actions.push({ module, date, properties });
+  }
+  return { actions };
+}
+
+async function writeSeed4jHistoryAtomic(
+  projectFolder: string,
+  history: SeedHistory,
+): Promise<void> {
+  const dirPath = path.join(projectFolder, SEED4J_HISTORY_DIR);
+  await mkdir(dirPath, { recursive: true });
+  const finalPath = path.join(dirPath, SEED4J_HISTORY_FILE);
+  const tempPath = path.join(dirPath, `.${SEED4J_HISTORY_FILE}.tmp-${process.pid}-${Date.now()}`);
+  const body = `${JSON.stringify(history, null, 2)}\n`;
+  await writeFile(tempPath, body);
+  await rename(tempPath, finalPath);
+}
+
+function lastIndexOfSlug(actions: SeedHistoryAction[], slug: string): number {
+  for (let i = actions.length - 1; i >= 0; i -= 1) {
+    if (actions[i]?.module === slug) return i;
+  }
+  return -1;
 }
 
 function diffSnapshots(before: Map<string, Buffer>, after: Map<string, Buffer>): PreviewChange[] {

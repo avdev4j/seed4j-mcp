@@ -164,6 +164,38 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         text(await client.createProject(projectFolder, properties, commit ?? false)),
     },
     {
+      name: "remove_module",
+      description:
+        "Remove a previously-applied seed4j module from a project: identifies the files that module installed (by replaying the project's history twice — with and without the target — into scratch dirs), classifies them as clean-since-install vs locally-modified (the latter typically contains business code the user added on top of the scaffold), and either previews or executes deletion/revert. Default mode is preview — no disk mutation. Set confirm: true to execute. By default, locally-modified files are skipped; set force: true to act on them too. On a successful confirm, also updates .seed4j/modules/history.json so get_project_status reflects the removal. The operation is heavyweight: replays ~2N apply-patch calls (N = number of applied modules in the project's history). Before flipping confirm: true, surface the locallyModifiedFiles list to the user — those are the files the agent will skip or destroy.",
+      inputSchema: {
+        moduleSlug: z.string().describe("Slug identifier of the seed4j module to remove."),
+        projectFolder: z
+          .string()
+          .describe(
+            "Absolute path to the project folder. Must contain a `.seed4j/modules/history.json` (otherwise the call returns action: 'not-applied').",
+          ),
+        confirm: z
+          .boolean()
+          .optional()
+          .describe(
+            "Default false. When false (or omitted), returns a preview only — no disk mutation. When true, actually deletes/reverts the files and updates history.json.",
+          ),
+        force: z
+          .boolean()
+          .optional()
+          .describe(
+            "Default false. When true, locally-modified files are deleted (if added by the module) or reverted to pre-install content (if modified by the module). Surface a clear destructive-action confirmation to the user before enabling this.",
+          ),
+      },
+      handler: async ({ moduleSlug, projectFolder, confirm, force }) =>
+        text(
+          await client.removeModule(moduleSlug, projectFolder, {
+            confirm: confirm ?? false,
+            force: force ?? false,
+          }),
+        ),
+    },
+    {
       name: "preview_module",
       description:
         "Dry-run a seed4j module against a scratch copy of the project folder and return the list of files that would change (added/modified/deleted) — without touching the real project. Auto-selects 'copy' mode when the folder exists (diff vs current project state) or 'empty' mode when it doesn't (e.g. previewing 'init' before create_project). Always runs with commit: false. Pair with validate_properties before apply_module when the agent wants to show the user a concrete plan.",

@@ -138,6 +138,52 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 
 Set `commit: true` when scaffolding a project end-to-end and the caller wants a **clean per-feature git history** (one commit per applied module — easy to bisect, easy to revert one step). Keep the default `false` for speculative or validation runs, where rolling back is simpler without intermediate commits. Per-step `commit` overrides inside `apply_modules` / `apply_preset` are not exposed — the flag is a single top-level choice.
 
+### `remove_module`
+
+- **Input:** `moduleSlug: string`, `projectFolder: string`, `confirm?: boolean` (default `false`), `force?: boolean` (default `false`).
+- **Behaviour:** removes a previously-applied module by reading the project's [`.seed4j/modules/history.json`](seed4j-api.md#seed4jmoduleshistoryjson), replaying the history twice into scratch dirs — with the target and without — using each action's **own** properties, and diffing both against the current project folder. Classifies each touched file as **clean** (current bytes match the install snapshot) or **locally-modified** (current bytes differ — typically business code the user added on top of the scaffold). With `confirm: true`, deletes clean added files, reverts clean modified files to their pre-install content, skips locally-modified files (unless `force: true`), and writes `.seed4j/modules/history.json` back atomically with the targeted action removed. Cost: ~2 × N apply-patch calls, where N is the number of applied modules. `.git/` and `.seed4j/` are excluded from the diff on every side.
+- **Output (preview, default):**
+  ```json
+  {
+    "moduleSlug": "maven-java",
+    "projectFolder": "/Users/.../app",
+    "action": "preview",
+    "actionIndex": 1,
+    "modulesReplayed": 1,
+    "filesToDelete": [{ "path": "pom.xml", "sizeBytes": 1800 }],
+    "filesToRevert": [{ "path": ".gitignore", "currentSizeBytes": 200, "revertedSizeBytes": 100 }],
+    "locallyModifiedFiles": [
+      {
+        "path": "src/main/java/com/example/App.java",
+        "kind": "added",
+        "currentSizeBytes": 1200,
+        "installedSizeBytes": 250
+      }
+    ],
+    "historyUpdate": { "currentActions": 2, "afterRemoval": 1 }
+  }
+  ```
+- **Output (`confirm: true`):**
+  ```json
+  {
+    "moduleSlug": "maven-java",
+    "projectFolder": "/Users/.../app",
+    "action": "removed",
+    "actionIndex": 1,
+    "deletedCount": 1,
+    "deleted": ["pom.xml"],
+    "revertedCount": 1,
+    "reverted": [".gitignore"],
+    "skippedLocallyModifiedCount": 1,
+    "skippedLocallyModified": ["src/main/java/com/example/App.java"],
+    "historyUpdated": true
+  }
+  ```
+- **Output (slug not in history):** `{ "action": "not-applied", ... }`.
+- **Multiple applications:** if the same slug was applied more than once, this call removes the **most recent** occurrence (`actionIndex` reports which).
+- **When to use:** when the user wants to undo a wrong or obsolete module choice. **Surface the preview's `locallyModifiedFiles` list to the user before flipping `confirm: true`** — those are the files that will be skipped (default) or destroyed (`force: true`). Pair with `get_project_status` after removal to confirm the history reflects the change.
+- **Constraints:** the MCP server and seed4j must share a filesystem (same constraint as `apply_module` — replays write to scratch dirs seed4j must be able to mutate). Disk required ≈ 2 × project size. Calls are non-cached and non-retried — removal always reflects the latest state.
+
 ## MCP resources
 
 The module catalogue, landscape, and preset list are **also** exposed as MCP resources — see [resources.md](resources.md). The tools above remain the right choice for inline / per-turn use; resources are for browsing and one-shot attachment.
@@ -148,4 +194,4 @@ The two documented seed4j flows (curated stack, custom stack) are exposed as MCP
 
 ## Not yet exposed
 
-- Module removal / uninstall (roadmap item 17).
+_All roadmap items shipped._

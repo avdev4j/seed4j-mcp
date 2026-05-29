@@ -223,6 +223,38 @@ Spring Boot Actuator info endpoint. Used by `ping_seed4j` as a best-effort versi
 **Consumed by:** `ping_seed4j` (version probe only — liveness uses `/api/modules`).
 **Fields we read:** `build.version` (preferred) or top-level `version` (fallback). Either may be absent; `version` in the ping payload falls back to `null` without failing the probe.
 
+## Project-local files
+
+seed4j persists project history inside the project folder. The MCP server reads this file directly (and, for the `remove_module` tool, writes it back) — there is no HTTP endpoint to mutate history.
+
+### `.seed4j/modules/history.json`
+
+**Source:** [`FileSystemProjectsRepository.java`](https://github.com/seed4j/seed4j/blob/main/src/main/java/com/seed4j/project/infrastructure/secondary/FileSystemProjectsRepository.java) (`HISTORY_FOLDER = ".seed4j/modules"`, `HISTORY_FILE = "history.json"`), [`PersistedProjectHistory.java`](https://github.com/seed4j/seed4j/blob/main/src/main/java/com/seed4j/project/infrastructure/secondary/PersistedProjectHistory.java), [`PersistedProjectAction.java`](https://github.com/seed4j/seed4j/blob/main/src/main/java/com/seed4j/project/infrastructure/secondary/PersistedProjectAction.java).
+
+**Shape:**
+
+```jsonc
+{
+  "actions": [
+    {
+      "module": "string", // module slug (e.g. "init", "maven-java")
+      "date": "string", // ISO-8601 instant (Jackson Instant serialiser)
+      "properties": {
+        /* Map<String, Object> — the properties the module was applied with */
+      },
+    },
+  ],
+}
+```
+
+**Consumed by:** `remove_module` reads the file to determine which modules are applied and with what per-action properties; on a successful confirmed removal it writes the file back **atomically** (temp file in `.seed4j/modules/` + `rename`) with the targeted action filtered out. `get_project_status` indirectly relies on this file too — seed4j's `GET /api/projects` derives `RestProjectHistory` from it.
+
+**Notes:**
+
+- Missing file or unparseable JSON → `remove_module` returns `action: "not-applied"`.
+- The MCP server is **not** holding a lock on the file. If seed4j is concurrently mutating it during a `remove_module` call, the atomic rename minimises the corruption window but cannot eliminate it. Operators running both side-by-side should serialise their operations.
+- The on-disk file shape is part of seed4j's persistence layer rather than its public HTTP API; re-verify it against the seed4j source when bumping the seed4j version.
+
 ## Endpoints we don't use
 
 | Endpoint                  | Why we don't use it                                                                                                                                                                                                                                         |

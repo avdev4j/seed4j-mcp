@@ -4,6 +4,15 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #17 — Remove an applied module and its files
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `remove_module` tool reverses a previously-applied seed4j module. Default mode is preview — no disk mutation; the response lists the files that would be deleted, the files that would be reverted to their pre-install content, and the **locally-modified files** (typically business code the user added on top of the scaffold) that would be skipped. With `confirm: true` it executes; with `force: true` it acts on locally-modified files too. On a successful confirmed run it also writes [`.seed4j/modules/history.json`](seed4j-api.md#seed4jmoduleshistoryjson) back atomically with the targeted action removed, so `get_project_status` reflects the change.
+- **Algorithm:** reads `.seed4j/modules/history.json` directly to get the per-action properties, replays the project history twice into scratch dirs (with-target and without-target) using each action's **own** properties (not the aggregated `/api/projects` view), snapshots all three folders (excluding `.git/` and `.seed4j/`), and classifies each touched file as clean-since-install or locally-modified by byte-exact comparison. Cost: ~2 × N apply-patch calls.
+- **API change:** new `Seed4jClient.removeModule(slug, projectFolder, { confirm?, force? })`. New module-level helpers `readSeed4jHistory`, `writeSeed4jHistoryAtomic`, `lastIndexOfSlug`. `snapshotFiles` accepts a custom skip-segment set (default unchanged).
+- **Tool count:** 14 → **15**.
+- **Docs touched:** [tools.md](tools.md), [seed4j-api.md](seed4j-api.md) (new "Project-local files" section documenting `.seed4j/modules/history.json` shape with citations), [CLAUDE.md](../CLAUDE.md), [ROADMAP.md](ROADMAP.md).
+
 ### #16 — CI: typecheck + test on PRs, and lint
 
 - **Shipped:** 2026-05-29
