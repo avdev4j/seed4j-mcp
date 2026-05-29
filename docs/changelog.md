@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #12 — Single-source the server version
+
+- **Shipped:** 2026-05-29
+- **User impact:** the MCP server now advertises the **real** package version in its `initialize` handshake — whatever `package.json` says — instead of the previously-hardcoded `0.0.1`. Whoever bumps the release also bumps what every MCP client sees. No new env var, no API change.
+- **API change:** new tiny module [`src/version.ts`](../src/version.ts) reads `package.json` synchronously at module load and exports `PACKAGE_VERSION`. `createServer` defaults `options.version` to `PACKAGE_VERSION`; the `options.version` override is preserved for tests. On read failure, falls back to `0.0.0` with a one-line stderr warning (stdout stays clean).
+- **Docs touched:** [overview.md](overview.md).
+
 ### #11 — Ship MCP prompts for common flows
 
 - **Shipped:** 2026-05-29

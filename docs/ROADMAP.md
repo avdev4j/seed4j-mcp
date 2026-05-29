@@ -101,11 +101,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ## Quality & maintainability
 
-### 12. Single-source the server version
+### ✅ 12. Single-source the server version
 - **What:** Read `version` from `package.json` instead of the hardcoded `"0.0.1"` in [src/server.ts](../src/server.ts).
 - **Why:** The version is duplicated and will drift on the next release.
 - **Where:** [src/server.ts](../src/server.ts), [src/index.ts](../src/index.ts).
 - **Done when:** `createServer` reports the actual package version; no hardcoded literal remains.
+- **Shipped:** 2026-05-29 — new [src/version.ts](../src/version.ts) reads `package.json` once at module load and exports `PACKAGE_VERSION`. `createServer` defaults to it; `options.version` override preserved for tests. Fallback to `0.0.0` with a stderr warning on read failure. See [changelog.md](changelog.md#12--single-source-the-server-version).
 
 ### 13. Optional file-based debug logging
 - **What:** Behind a `SEED4J_LOG_FILE` env var, log requests/responses/errors to a file (never stdout).
