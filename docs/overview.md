@@ -14,9 +14,10 @@
 | --- | --- | --- |
 | Entry point | [src/index.ts](../src/index.ts) | Load config from env, emit warnings on stderr, build the client, wire the STDIO transport, connect the server. |
 | Config | [src/config.ts](../src/config.ts) | Pure env → `{ baseUrl, clientOptions, warnings }` parser. No I/O. |
-| Server | [src/server.ts](../src/server.ts) | Construct the `McpServer` and register tools + resources. |
+| Server | [src/server.ts](../src/server.ts) | Construct the `McpServer` and register tools + resources + prompts. |
 | Tools | [src/tools.ts](../src/tools.ts) | The MCP-facing tools surface — names, descriptions, zod schemas, handlers. |
 | Resources | [src/resources.ts](../src/resources.ts) | Read-only MCP resources for the catalogue (modules, landscape, presets). Re-uses the catalogue cache. |
+| Prompts | [src/prompts.ts](../src/prompts.ts) | MCP prompts encoding the curated-stack and custom-stack flows. Pure string templates — no HTTP. |
 | Client | [src/client.ts](../src/client.ts) | HTTP calls into seed4j; the only layer that knows about `fetch`. |
 
 ## seed4j HTTP endpoints used

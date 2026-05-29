@@ -90,11 +90,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** `resources/list` and `resources/read` return the catalogue; cache (#5) is reused.
 - **Shipped:** 2026-05-29 — three resources (`seed4j://catalogue/modules`, `seed4j://catalogue/landscape`, `seed4j://catalogue/presets`) registered alongside the tools, all `application/json`, all backed by the catalogue cache from #5. A tool call and a resource read for the same endpoint share the same cache entry. See [resources.md](resources.md) and [changelog.md](changelog.md#10--expose-the-catalogue-as-mcp-resources).
 
-### 11. Ship MCP prompts for common flows
+### ✅ 11. Ship MCP prompts for common flows
 - **What:** Register prompts for the two documented flows ("curated stack" and "custom stack") so clients can offer them as slash-style starting points.
 - **Why:** Encodes the intended `search → dependencies → validate → apply` sequence the agent should follow, reducing mis-ordered calls.
 - **Where:** [src/server.ts](../src/server.ts), new `src/prompts.ts`.
 - **Done when:** `prompts/list` exposes them and they render the documented flow.
+- **Shipped:** 2026-05-29 — two prompts (`seed4j-curated-stack`, `seed4j-custom-stack`) registered, each takes `stackDescription` + optional `projectFolder` and returns one user-role message listing the exact tool sequence (using #8 `ping_seed4j` and #9 `preview_module` from later in the roadmap). See [prompts.md](prompts.md) and [changelog.md](changelog.md#11--ship-mcp-prompts-for-common-flows).
 
 ---
 

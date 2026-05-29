@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #11 — Ship MCP prompts for common flows
+
+- **Shipped:** 2026-05-29
+- **User impact:** two new MCP prompts encode the documented seed4j flows as slash-style starters: `seed4j-curated-stack` (`list_presets → get_preset_details → preview_module → apply_preset`) and `seed4j-custom-stack` (`search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules`). Each takes `stackDescription` (required) and `projectFolder` (optional) and returns one user-role message that lists the exact tool sequence to follow — so a fresh agent can't mis-order calls, and humans can see the on-ramp in their MCP client's prompt picker.
+- **API change:** new module [`src/prompts.ts`](../src/prompts.ts) with `buildPrompts` / `registerPrompts`. `src/server.ts` now calls all three registrations (tools + resources + prompts). No change to existing tools, resources, or `Seed4jClient`.
+- **Docs touched:** [overview.md](overview.md), [tools.md](tools.md), [prompts.md](prompts.md) (new), [README.md](README.md) (index).
+
 ### #10 — Expose the catalogue as MCP resources
 
 - **Shipped:** 2026-05-29

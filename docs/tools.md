@@ -125,7 +125,10 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
 
 The module catalogue, landscape, and preset list are **also** exposed as MCP resources — see [resources.md](resources.md). The tools above remain the right choice for inline / per-turn use; resources are for browsing and one-shot attachment.
 
+## MCP prompts
+
+The two documented seed4j flows (curated stack, custom stack) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the agent doesn't have to infer it.
+
 ## Not yet exposed
 
-- MCP prompts (roadmap item 11).
 - Module removal / uninstall (roadmap item 17).

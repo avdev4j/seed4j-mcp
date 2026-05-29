@@ -24,7 +24,7 @@ Three layers, kept intentionally thin:
 
 1. **Tools** — [src/tools.ts](src/tools.ts). `buildTools(client)` returns the list of MCP tool definitions (name, description, zod input shape, handler). Descriptions are the *only* documentation the agent sees; treat them as part of the public API. Handlers return raw JSON strings from seed4j wrapped in `{ content: [{ type: "text", text }] }`, so the agent sees the richest payload — only transform when a tool aggregates or filters the response.
 2. **Client** — [src/client.ts](src/client.ts). `Seed4jClient` holds the seed4j base URL and a `fetch` impl, and exposes one method per route. All seed4j HTTP routes live here so the tools layer stays free of transport concerns. The endpoint paths (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`, `/api/presets`, `/api/projects`, `/api/modules-landscape`) match the JHipster-Lite-style API seed4j inherits — verify against the running seed4j instance before assuming they're stable. Project initialisation is *not* a dedicated endpoint; `createProject` creates the target folder and then applies the `init` module via apply-patch.
-3. **Server / entrypoint** — [src/server.ts](src/server.ts) builds an `McpServer` and calls `registerTools` + `registerResources`; [src/index.ts](src/index.ts) wires `Seed4jClient` + `StdioServerTransport` and connects them. Adding a new tool = adding an entry to `buildTools`; adding a new resource = adding an entry to `buildResources` in [src/resources.ts](src/resources.ts); no other wiring is required.
+3. **Server / entrypoint** — [src/server.ts](src/server.ts) builds an `McpServer` and calls `registerTools` + `registerResources` + `registerPrompts`; [src/index.ts](src/index.ts) wires `Seed4jClient` + `StdioServerTransport` and connects them. Adding a new tool = adding an entry to `buildTools`; adding a new resource = adding an entry to `buildResources` in [src/resources.ts](src/resources.ts); adding a new prompt = adding an entry to `buildPrompts` in [src/prompts.ts](src/prompts.ts); no other wiring is required.
 
 ### Tools currently exposed
 - `ping_seed4j`
@@ -37,6 +37,10 @@ Three layers, kept intentionally thin:
 - `seed4j://catalogue/modules` — full module catalogue (backed by `/api/modules`)
 - `seed4j://catalogue/landscape` — module dependency-ranked graph (backed by `/api/modules-landscape`)
 - `seed4j://catalogue/presets` — curated preset list (backed by `/api/presets`)
+
+### Prompts currently exposed
+- `seed4j-curated-stack` — `list_presets → get_preset_details → preview_module → apply_preset`
+- `seed4j-custom-stack` — `search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules`
 
 ### STDIO transport caveat
 The server runs over STDIO. The MCP framing lives on stdout, so **nothing else may write to stdout** — startup errors are routed to stderr in [src/index.ts](src/index.ts). If you add logging from tool handlers, use `console.error` (stderr) or write to a file; any `console.log` will corrupt the MCP stream and the client will hang.
