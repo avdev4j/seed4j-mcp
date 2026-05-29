@@ -170,6 +170,47 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("refreshCatalogueCache", () => {
+    it("clears all catalogue cache entries by default", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      mocks.jsonOk('{"presets":[]}');
+      mocks.jsonOk('{"levels":[]}');
+      await client.listModules();
+      await client.listPresets();
+      await client.getModulesLandscape();
+
+      const result = JSON.parse(client.refreshCatalogueCache());
+      expect(result).toEqual({
+        refreshed: "all",
+        clearedPaths: ["/api/modules", "/api/modules-landscape", "/api/presets"],
+      });
+
+      mocks.jsonOk('{"categories":["fresh"]}');
+      await client.listModules();
+      expect(mocks.calls.filter((call) => call.url.endsWith("/api/modules"))).toHaveLength(2);
+    });
+
+    it("clears only the targeted cache group", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      mocks.jsonOk('{"presets":[]}');
+      await client.listModules();
+      await client.listPresets();
+
+      const result = JSON.parse(client.refreshCatalogueCache("modules"));
+      expect(result).toEqual({
+        refreshed: "modules",
+        clearedPaths: ["/api/modules"],
+      });
+
+      mocks.jsonOk('{"categories":["fresh"]}');
+      await client.listModules();
+      await client.listPresets();
+
+      expect(mocks.calls.filter((call) => call.url.endsWith("/api/modules"))).toHaveLength(2);
+      expect(mocks.calls.filter((call) => call.url.endsWith("/api/presets"))).toHaveLength(1);
+    });
+  });
+
   describe("getPresetDetails", () => {
     it("matches by name case-insensitively", async () => {
       mocks.jsonOk(

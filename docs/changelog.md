@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #24 — Expose catalogue cache refresh as an MCP tool
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `refresh_catalogue` tool clears the in-process catalogue cache during a session. It clears modules, landscape, and presets by default, or one targeted cache group when requested.
+- **Tool count:** 16 → **17**.
+- **Docs touched:** [tools.md](tools.md), [configuration.md](configuration.md), [ROADMAP.md](ROADMAP.md).
+
 ### #23 — Add a stack planning tool
 
 - **Shipped:** 2026-05-29

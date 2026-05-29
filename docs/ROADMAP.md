@@ -216,12 +216,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** `plan_stack` returns a structured plan with no project mutation, uses cached catalogue data, and is covered by unit tests.
 - **Shipped:** 2026-05-29 — new `plan_stack` tool scores matching presets and modules from a natural-language stack description, then enriches module candidates with dependency order, feature choices, required/defaulted property hints, warnings, and next-step guidance. See [changelog.md](changelog.md#23--add-a-stack-planning-tool).
 
-### 24. Expose catalogue cache refresh as an MCP tool
+### ✅ 24. Expose catalogue cache refresh as an MCP tool
 
 - **What:** Add a `refresh_catalogue` tool that clears the in-process catalogue cache, optionally for one cacheable endpoint.
 - **Why:** The client has `clearCache`, but MCP callers cannot use it. This matters when seed4j modules or presets change during a long session.
 - **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts), [tests/tools.test.ts](../tests/tools.test.ts), [docs/tools.md](tools.md), [docs/configuration.md](configuration.md), [docs/changelog.md](changelog.md).
 - **Done when:** Calling `refresh_catalogue` clears all catalogue cache entries by default, supports targeted refresh for modules/landscape/presets, and returns a structured confirmation.
+- **Shipped:** 2026-05-29 — new `refresh_catalogue` tool clears all catalogue cache entries by default or one targeted cache group (`modules`, `landscape`, `presets`). The response reports the cleared endpoint paths. See [changelog.md](changelog.md#24--expose-catalogue-cache-refresh-as-an-mcp-tool).
 
 ### 25. Add path validation and mutation safety rails
 

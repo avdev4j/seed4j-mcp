@@ -140,6 +140,18 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         text(await client.planStack(stackDescription, limit ?? 5)),
     },
     {
+      name: "refresh_catalogue",
+      description:
+        "Clear the in-process seed4j catalogue cache. Use this when modules, presets, or the module landscape changed during a session and the caller needs fresh catalogue data. Clears modules, landscape, and presets by default; can target one cache group.",
+      inputSchema: {
+        target: z
+          .enum(["all", "modules", "landscape", "presets"])
+          .optional()
+          .describe("Cache group to clear. Defaults to all."),
+      },
+      handler: async ({ target }) => text(client.refreshCatalogueCache(target ?? "all")),
+    },
+    {
       name: "get_project_status",
       description:
         "Return the seed4j history of a project folder: the ordered list of applied module slugs and the aggregated properties used. Call this to discover what is already wired before suggesting next modules.",

@@ -49,6 +49,13 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
   - `nextSteps`: suggested follow-up calls for the MCP caller.
 - **When to use:** before `validate_properties`, `preview_module`, or any apply tool when the user asks for a stack recommendation and the caller needs a concrete proposal without mutating disk.
 
+### `refresh_catalogue`
+
+- **Input:** `target?: "all" | "modules" | "landscape" | "presets"` (default `"all"`).
+- **Behaviour:** clears the in-process catalogue cache for `/api/modules`, `/api/modules-landscape`, and/or `/api/presets`. Does not call seed4j immediately; the next tool/resource read fetches fresh data.
+- **Output:** `{ refreshed, clearedPaths }`.
+- **When to use:** after changing modules or presets in a running seed4j instance, or when the caller suspects cached catalogue data is stale. Normal sessions usually do not need this because the cache has a TTL.
+
 ### `get_module_details`
 
 - **Input:** `moduleSlug: string`.

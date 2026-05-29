@@ -19,6 +19,7 @@ function createClientMock(): ClientMock {
     getPresetDetails: vi.fn(),
     searchModules: vi.fn(),
     planStack: vi.fn(),
+    refreshCatalogueCache: vi.fn(),
     getProjectStatus: vi.fn(),
     applyModule: vi.fn(),
     createProject: vi.fn(),
@@ -78,6 +79,7 @@ describe("MCP tool registry", () => {
       "get_preset_details",
       "search_modules",
       "plan_stack",
+      "refresh_catalogue",
       "get_project_status",
       "apply_module",
       "create_project",
@@ -159,6 +161,18 @@ describe("MCP tool registry", () => {
     mock.planStack.mockResolvedValue("{}");
     await invoke(client, "plan_stack", { stackDescription: "Maven Java", limit: 2 });
     expect(mock.planStack).toHaveBeenCalledWith("Maven Java", 2);
+  });
+
+  it("refresh_catalogue defaults to all cache groups", async () => {
+    mock.refreshCatalogueCache.mockReturnValue('{"refreshed":"all"}');
+    await invoke(client, "refresh_catalogue");
+    expect(mock.refreshCatalogueCache).toHaveBeenCalledWith("all");
+  });
+
+  it("refresh_catalogue forwards a targeted cache group", async () => {
+    mock.refreshCatalogueCache.mockReturnValue('{"refreshed":"modules"}');
+    await invoke(client, "refresh_catalogue", { target: "modules" });
+    expect(mock.refreshCatalogueCache).toHaveBeenCalledWith("modules");
   });
 
   it("get_project_status passes the folder", async () => {

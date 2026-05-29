@@ -56,6 +56,7 @@ export const PING_VERSION_PATH = "/management/info";
 
 export type SleepFn = (ms: number) => Promise<void>;
 export type NowFn = () => number;
+export type CatalogueCacheTarget = "all" | "modules" | "landscape" | "presets";
 
 const defaultSleep: SleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaultNow: NowFn = () => Date.now();
@@ -221,6 +222,17 @@ export class Seed4jClient {
       return;
     }
     this.cache.delete(path);
+  }
+
+  refreshCatalogueCache(target: CatalogueCacheTarget = "all"): string {
+    const paths = catalogueCachePaths(target);
+    for (const path of paths) {
+      this.clearCache(path);
+    }
+    return JSON.stringify({
+      refreshed: target,
+      clearedPaths: paths,
+    });
   }
 
   // Contract: docs/seed4j-api.md#get-managementinfo (best-effort version probe; liveness uses /api/modules).
@@ -1147,6 +1159,19 @@ function relativePath(baseUrl: string, absoluteUrl: string): string {
     return absoluteUrl.slice(baseUrl.length) || "/";
   }
   return absoluteUrl;
+}
+
+function catalogueCachePaths(target: CatalogueCacheTarget): string[] {
+  switch (target) {
+    case "all":
+      return [...CACHEABLE_PATHS];
+    case "modules":
+      return ["/api/modules"];
+    case "landscape":
+      return ["/api/modules-landscape"];
+    case "presets":
+      return ["/api/presets"];
+  }
 }
 
 function checkValue(definition: PropertyDefinition, value: unknown): string | null {
