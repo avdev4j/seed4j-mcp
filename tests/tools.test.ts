@@ -18,6 +18,7 @@ function createClientMock(): ClientMock {
     listPresets: vi.fn(),
     getPresetDetails: vi.fn(),
     searchModules: vi.fn(),
+    planStack: vi.fn(),
     getProjectStatus: vi.fn(),
     applyModule: vi.fn(),
     createProject: vi.fn(),
@@ -76,6 +77,7 @@ describe("MCP tool registry", () => {
       "list_presets",
       "get_preset_details",
       "search_modules",
+      "plan_stack",
       "get_project_status",
       "apply_module",
       "create_project",
@@ -145,6 +147,18 @@ describe("MCP tool registry", () => {
     mock.searchModules.mockResolvedValue("{}");
     await invoke(client, "search_modules", { query: "maven", limit: 5 });
     expect(mock.searchModules).toHaveBeenCalledWith("maven", 5);
+  });
+
+  it("plan_stack delegates with the default limit", async () => {
+    mock.planStack.mockResolvedValue("{}");
+    await invoke(client, "plan_stack", { stackDescription: "Maven Java" });
+    expect(mock.planStack).toHaveBeenCalledWith("Maven Java", 5);
+  });
+
+  it("plan_stack forwards an explicit limit", async () => {
+    mock.planStack.mockResolvedValue("{}");
+    await invoke(client, "plan_stack", { stackDescription: "Maven Java", limit: 2 });
+    expect(mock.planStack).toHaveBeenCalledWith("Maven Java", 2);
   });
 
   it("get_project_status passes the folder", async () => {

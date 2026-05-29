@@ -38,6 +38,17 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 - **Output:** `{ query, matches: [{ slug, description, tags, category, score }] }` — case-insensitive substring scoring across slug (×3), description (×2), tags and category (×1), sorted by score desc.
 - **When to use:** narrow the catalogue before `get_module_details` / `get_module_dependencies`.
 
+### `plan_stack`
+
+- **Input:** `stackDescription: string`, `limit?: number` (default 5, capped at 10).
+- **Behaviour:** read-only planning helper. Scores preset names/module slugs and module catalogue matches from a natural-language description, then enriches module candidates with dependency order, `featureChoices`, required properties, and defaulted properties.
+- **Output:** `{ query, presetCandidates, moduleCandidates, warnings, nextSteps }`.
+  - `presetCandidates`: matching presets with `{ name, modules, score }`.
+  - `moduleCandidates`: matching modules with `{ slug, description, tags, category, score, applicationOrder, featureChoices, requiredProperties, defaultedProperties }`.
+  - `warnings`: empty unless the query is blank or no candidates match.
+  - `nextSteps`: suggested follow-up calls for the MCP caller.
+- **When to use:** before `validate_properties`, `preview_module`, or any apply tool when the user asks for a stack recommendation and the caller needs a concrete proposal without mutating disk.
+
 ### `get_module_details`
 
 - **Input:** `moduleSlug: string`.

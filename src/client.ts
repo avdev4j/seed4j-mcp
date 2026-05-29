@@ -99,6 +99,13 @@ interface FailureEntry {
   body: string;
 }
 
+interface PropertyHint {
+  key: string;
+  type: string;
+  mandatory: boolean;
+  default?: unknown;
+}
+
 type PreviewMode = "copy" | "empty";
 
 type PreviewChangeKind = "added" | "modified" | "deleted";
@@ -682,6 +689,58 @@ export class Seed4jClient {
     return JSON.stringify({ query, matches: matches.slice(0, effectiveLimit) });
   }
 
+  async planStack(stackDescription: string, limit = 5): Promise<string> {
+    const tokens = tokenize(stackDescription);
+    const effectiveLimit = limit > 0 ? Math.min(Math.floor(limit), 10) : 5;
+    if (tokens.length === 0) {
+      return JSON.stringify({
+        query: "",
+        presetCandidates: [],
+        moduleCandidates: [],
+        warnings: ["stackDescription is blank"],
+        nextSteps: ["Ask the user what kind of seed4j stack they want to build."],
+      });
+    }
+
+    const presetCandidates = await this.findPresetCandidates(tokens, effectiveLimit);
+    const moduleSearch = JSON.parse(await this.searchModules(stackDescription, effectiveLimit)) as {
+      matches?: Array<{
+        slug: string;
+        description: string;
+        tags: string[];
+        category: string;
+        score: number;
+      }>;
+    };
+    const moduleCandidates = [];
+    for (const match of moduleSearch.matches ?? []) {
+      const [dependencyInfo, propertyInfo] = await Promise.all([
+        this.safeDependencyInfo(match.slug),
+        this.safePropertyHints(match.slug),
+      ]);
+      moduleCandidates.push({
+        ...match,
+        ...dependencyInfo,
+        ...propertyInfo,
+      });
+    }
+
+    return JSON.stringify({
+      query: stackDescription,
+      presetCandidates,
+      moduleCandidates,
+      warnings:
+        presetCandidates.length === 0 && moduleCandidates.length === 0
+          ? ["No matching presets or modules found."]
+          : [],
+      nextSteps: [
+        "Pick a preset candidate and call get_preset_details, or pick module candidates and resolve featureChoices.",
+        "Call validate_properties for the chosen modules once the property map is known.",
+        "Call preview_module before any apply tool.",
+      ],
+    });
+  }
+
   async getModuleDependencies(moduleSlug: string): Promise<string> {
     const landscape = JSON.parse(await this.getText("/api/modules-landscape")) as LandscapeRoot;
     const modulesBySlug = new Map<string, LandscapeModule>();
@@ -712,6 +771,89 @@ export class Seed4jClient {
       applicationOrder: [...applicationOrder],
       featureChoices,
     });
+  }
+
+  private async findPresetCandidates(
+    tokens: string[],
+    limit: number,
+  ): Promise<
+    Array<{
+      name: string;
+      modules: Array<{ slug?: string }>;
+      score: number;
+    }>
+  > {
+    const root = JSON.parse(await this.listPresets()) as {
+      presets?: Array<{ name?: string; modules?: Array<{ slug?: string }> }>;
+    };
+    const candidates = [];
+    for (const preset of root.presets ?? []) {
+      const name = preset.name ?? "";
+      const modules = Array.isArray(preset.modules) ? preset.modules : [];
+      const score = scorePreset(tokens, name, modules);
+      if (score > 0) {
+        candidates.push({ name, modules, score });
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    return candidates.slice(0, limit);
+  }
+
+  private async safeDependencyInfo(moduleSlug: string): Promise<{
+    applicationOrder: string[];
+    featureChoices: Record<string, string[]>;
+    dependencyError?: string;
+  }> {
+    try {
+      const dependencies = JSON.parse(await this.getModuleDependencies(moduleSlug)) as {
+        applicationOrder?: string[];
+        featureChoices?: Record<string, string[]>;
+      };
+      return {
+        applicationOrder: dependencies.applicationOrder ?? [],
+        featureChoices: dependencies.featureChoices ?? {},
+      };
+    } catch (error) {
+      return {
+        applicationOrder: [],
+        featureChoices: {},
+        dependencyError: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  private async safePropertyHints(moduleSlug: string): Promise<{
+    requiredProperties: PropertyHint[];
+    defaultedProperties: PropertyHint[];
+    propertyError?: string;
+  }> {
+    try {
+      const schema = JSON.parse(await this.getModuleDetails(moduleSlug)) as {
+        definitions?: PropertyDefinition[];
+      };
+      const requiredProperties: PropertyHint[] = [];
+      const defaultedProperties: PropertyHint[] = [];
+      for (const definition of schema.definitions ?? []) {
+        const key = definition.key;
+        const type = definition.type ?? "STRING";
+        const mandatory = !!definition.mandatory;
+        const defaultValue = readDefault(definition);
+        const hint: PropertyHint = { key, type, mandatory };
+        if (defaultValue.present) {
+          hint.default = defaultValue.value;
+          defaultedProperties.push(hint);
+        } else if (mandatory) {
+          requiredProperties.push(hint);
+        }
+      }
+      return { requiredProperties, defaultedProperties };
+    } catch (error) {
+      return {
+        requiredProperties: [],
+        defaultedProperties: [],
+        propertyError: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   private async getText(path: string): Promise<string> {
@@ -1113,6 +1255,19 @@ function scoreModule(
       if (tag.toLowerCase().includes(token)) score += 1;
     }
     if (categoryLower.includes(token)) score += 1;
+  }
+  return score;
+}
+
+function scorePreset(tokens: string[], name: string, modules: Array<{ slug?: string }>): number {
+  const nameLower = name.toLowerCase();
+  const moduleSlugs = modules.map((module) => module.slug?.toLowerCase() ?? "");
+  let score = 0;
+  for (const token of tokens) {
+    if (nameLower.includes(token)) score += 3;
+    for (const slug of moduleSlugs) {
+      if (slug.includes(token)) score += 1;
+    }
   }
   return score;
 }

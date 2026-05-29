@@ -200,6 +200,89 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("planStack", () => {
+    it("returns matching preset and module candidates with dependency and property hints", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          presets: [
+            {
+              name: "Java Library with Maven",
+              modules: [{ slug: "init" }, { slug: "maven-java" }],
+            },
+            { name: "Webapp", modules: [{ slug: "init" }] },
+          ],
+        }),
+      );
+      mocks.jsonOk(
+        JSON.stringify({
+          categories: [
+            {
+              name: "Build",
+              modules: [
+                {
+                  slug: "maven-java",
+                  description: "Maven build for Java",
+                  tags: ["build", "java"],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      mocks.jsonOk(
+        JSON.stringify({
+          levels: [
+            {
+              elements: [
+                { type: "MODULE", slug: "init", operation: "INIT", dependencies: [] },
+                {
+                  type: "MODULE",
+                  slug: "maven-java",
+                  operation: "ADD",
+                  dependencies: [{ type: "MODULE", slug: "init" }],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            { key: "packageName", mandatory: true, type: "STRING" },
+            { key: "javaVersion", mandatory: true, type: "STRING", default: "21" },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(await client.planStack("Java Maven", 3));
+
+      expect(result.query).toBe("Java Maven");
+      expect(result.presetCandidates[0]).toMatchObject({
+        name: "Java Library with Maven",
+      });
+      expect(result.moduleCandidates[0]).toMatchObject({
+        slug: "maven-java",
+        applicationOrder: ["init"],
+        featureChoices: {},
+        requiredProperties: [{ key: "packageName", type: "STRING", mandatory: true }],
+        defaultedProperties: [
+          { key: "javaVersion", type: "STRING", mandatory: true, default: "21" },
+        ],
+      });
+      expect(result.nextSteps).toContain("Call preview_module before any apply tool.");
+    });
+
+    it("returns a warning for a blank stack description without fetching", async () => {
+      const result = JSON.parse(await client.planStack("  "));
+
+      expect(result.warnings).toEqual(["stackDescription is blank"]);
+      expect(result.presetCandidates).toEqual([]);
+      expect(result.moduleCandidates).toEqual([]);
+      expect(mocks.calls).toHaveLength(0);
+    });
+  });
+
   describe("validateProperties", () => {
     it("flags missing mandatory keys and unknown keys", async () => {
       mocks.jsonOk(

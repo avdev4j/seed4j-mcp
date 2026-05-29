@@ -208,12 +208,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Runtime descriptions no longer imply Claude or a single agent type unless the specific context requires it; prompt tests still pass.
 - **Shipped:** 2026-05-29 — runtime tool, resource, prompt, and prompt-argument descriptions now use provider-neutral caller wording. Tests guard against reintroducing "the agent" in exposed descriptions. See [changelog.md](changelog.md#22--make-runtime-mcp-descriptions-provider-neutral).
 
-### 23. Add a stack planning tool
+### ✅ 23. Add a stack planning tool
 
 - **What:** Add a read-only `plan_stack` tool that takes a natural-language stack description and returns candidate presets/modules, dependency order, required feature choices, and validation hints without mutating disk.
 - **Why:** Today MCP callers must compose discovery, dependency lookup, and validation themselves. A planning tool gives users a clearer "here is the proposed stack" step before preview/apply.
 - **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts), [tests/client.test.ts](../tests/client.test.ts), [tests/tools.test.ts](../tests/tools.test.ts), [docs/tools.md](tools.md), [docs/changelog.md](changelog.md).
 - **Done when:** `plan_stack` returns a structured plan with no project mutation, uses cached catalogue data, and is covered by unit tests.
+- **Shipped:** 2026-05-29 — new `plan_stack` tool scores matching presets and modules from a natural-language stack description, then enriches module candidates with dependency order, feature choices, required/defaulted property hints, warnings, and next-step guidance. See [changelog.md](changelog.md#23--add-a-stack-planning-tool).
 
 ### 24. Expose catalogue cache refresh as an MCP tool
 

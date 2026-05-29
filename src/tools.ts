@@ -120,6 +120,26 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
       handler: async ({ query, limit }) => text(await client.searchModules(query, limit ?? 0)),
     },
     {
+      name: "plan_stack",
+      description:
+        "Read-only stack planning helper. Takes a natural-language stack description and returns matching presets, matching modules, dependency application order, feature choices that need user disambiguation, and required/defaulted property hints. This does not mutate disk and should be used before validate_properties, preview_module, or any apply tool when the caller wants a concrete stack proposal.",
+      inputSchema: {
+        stackDescription: z
+          .string()
+          .describe("Natural-language description of the stack the user wants to build."),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "Maximum number of preset/module candidates to return. Defaults to 5; capped at 10.",
+          ),
+      },
+      handler: async ({ stackDescription, limit }) =>
+        text(await client.planStack(stackDescription, limit ?? 5)),
+    },
+    {
       name: "get_project_status",
       description:
         "Return the seed4j history of a project folder: the ordered list of applied module slugs and the aggregated properties used. Call this to discover what is already wired before suggesting next modules.",

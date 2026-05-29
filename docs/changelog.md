@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #23 — Add a stack planning tool
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `plan_stack` tool provides a read-only planning checkpoint from a natural-language stack description. It returns matching presets, matching modules, dependency order, feature choices, required/defaulted property hints, warnings, and next-step guidance before any project mutation.
+- **Tool count:** 15 → **16**.
+- **Docs touched:** [tools.md](tools.md), [ROADMAP.md](ROADMAP.md).
+
 ### #22 — Make runtime MCP descriptions provider-neutral
 
 - **Shipped:** 2026-05-29
