@@ -38,7 +38,12 @@ npx vitest run tests/client.test.ts # one file
 npx vitest run -t "applyModules"    # tests matching a name
 ```
 
-Unit tests live in [tests/](../tests/) and use a fake `fetch` to exercise [`Seed4jClient`](../src/client.ts) without a real seed4j instance.
+Two test layers under [tests/](../tests/):
+
+- **Unit tests** (one file per `src/` module) use a `vi.fn()` fetcher or a mock client. Fast, exhaustive, and lock in the public contract of each module.
+- **Integration tests** live in [tests/integration/](../tests/integration/). Each suite boots a real [`node:http`](https://nodejs.org/api/http.html) server on an ephemeral port via [`tests/integration/server.ts`](../tests/integration/server.ts), and exercises `Seed4jClient` with the **global `fetch`** — so URL construction, JSON body framing, the `Authorization` header on the wire, retry against real sockets, and `AbortController`-driven timeouts all run end-to-end. Fixtures used by integration tests live in [tests/fixtures/](../tests/fixtures/) — small, hand-trimmed JSON payloads that match seed4j's shapes.
+
+Both layers run under `npm test`. No separate command needed.
 
 ## Project layout
 

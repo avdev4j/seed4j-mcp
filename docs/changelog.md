@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #14 — Integration tests against a mock seed4j server
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime — tests-only. Adds 14 end-to-end tests that boot a real `node:http` server per suite on an ephemeral port and exercise `Seed4jClient` with the global `fetch`. Catches URL / body / parse drift, `Authorization` propagation, retry across real sockets, and `AbortController`-driven timeouts — failure modes that hand-written `vi.fn()` mocks can't see.
+- **API change:** none. Pure additive tests + fixtures.
+- **Docs touched:** [CLAUDE.md](../CLAUDE.md), [develop.md](develop.md).
+
 ### #13 — Optional file-based debug logging
 
 - **Shipped:** 2026-05-29

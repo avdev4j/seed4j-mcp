@@ -1,0 +1,39 @@
+{
+  "categories": [
+    {
+      "name": "Build",
+      "modules": [
+        {
+          "slug": "maven-java",
+          "description": "Maven build for Java projects",
+          "tags": ["build", "java", "maven"]
+        },
+        {
+          "slug": "gradle-java",
+          "description": "Gradle build for Java projects",
+          "tags": ["build", "java", "gradle"]
+        }
+      ]
+    },
+    {
+      "name": "Base",
+      "modules": [
+        {
+          "slug": "init",
+          "description": "Initialise a new seed4j project",
+          "tags": ["base", "init"]
+        }
+      ]
+    },
+    {
+      "name": "Persistence",
+      "modules": [
+        {
+          "slug": "jpa-postgresql",
+          "description": "JPA + PostgreSQL persistence",
+          "tags": ["database", "sql", "postgresql"]
+        }
+      ]
+    }
+  ]
+}

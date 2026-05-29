@@ -1,0 +1,23 @@
+{
+  "slug": "init",
+  "description": "Initialise a new seed4j project",
+  "definitions": [
+    {
+      "key": "projectName",
+      "type": "STRING",
+      "mandatory": true
+    },
+    {
+      "key": "baseName",
+      "type": "STRING",
+      "mandatory": true,
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    {
+      "key": "indentSize",
+      "type": "INTEGER",
+      "mandatory": false,
+      "default": 2
+    }
+  ]
+}

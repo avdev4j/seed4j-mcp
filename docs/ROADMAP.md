@@ -115,11 +115,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** When the env var is set, structured lines are appended to the file; when unset, nothing is logged and stdout stays clean.
 - **Shipped:** 2026-05-29 — new [src/logger.ts](../src/logger.ts) (frozen no-op singleton when disabled, JSONL append-only stream when enabled). Client emits `http.request` / `http.response` / `http.timeout` / `http.error` / `http.retry` / `cache.hit` / `cache.populate` events. Authorization headers + request/response bodies never logged. See [logging.md](logging.md) and [changelog.md](changelog.md#13--optional-file-based-debug-logging).
 
-### 14. Integration tests against a mock seed4j server
+### ✅ 14. Integration tests against a mock seed4j server
 - **What:** Stand up an in-process HTTP server returning recorded seed4j fixtures, and run the tools end-to-end against it.
 - **Why:** Current tests use a fake `fetch`; they don't catch URL/body construction or response-shape regressions against realistic payloads.
 - **Where:** new `tests/integration/*`, fixtures under `tests/fixtures/`.
 - **Done when:** A suite exercises each tool against the mock and asserts on outputs.
+- **Shipped:** 2026-05-29 — `tests/integration/server.ts` boots a real `node:http` server per suite on port 0; `tests/integration/seed4j.test.ts` runs 14 end-to-end tests using the global `fetch` against hand-trimmed JHipster-Lite-shaped fixtures in `tests/fixtures/`. Covers reads, writes, validation, auth header propagation, retry across real sockets, `AbortController` timeouts, and ping. Recordings from a live seed4j wait on #15. See [changelog.md](changelog.md#14--integration-tests-against-a-mock-seed4j-server).
 
 ### 15. Verify and document seed4j API stability
 - **What:** Confirm the assumed endpoints (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`, `/api/presets`, `/api/projects`, `/api/modules-landscape`) against the running seed4j, and record the verified contract.

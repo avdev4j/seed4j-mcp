@@ -82,6 +82,13 @@ npx vitest run -t "applyModules"
 3. No registration step beyond that — `registerTools` iterates `buildTools` and wires each entry into the MCP server.
 4. Add a unit test in [tests/tools.test.ts](tests/tools.test.ts) (delegation) and, if you added a non-trivial transform on the client side, in [tests/client.test.ts](tests/client.test.ts).
 
+## Test layout
+- [tests/](tests/) — unit tests (one file per src/ module). Use `vi.fn()` fetchers / mock clients.
+- [tests/integration/](tests/integration/) — end-to-end tests that boot a real `node:http` server per suite on an ephemeral port and exercise `Seed4jClient` with the global `fetch`. Use these when you need to catch URL / body / response-shape drift that a hand-written mock can't.
+- [tests/fixtures/](tests/fixtures/) — JSON payloads used by integration tests (modules catalogue, landscape, presets, sample module schemas, project status). Hand-trimmed but shape-realistic.
+
+Both layers run under `npm test`.
+
 ## Roadmap execution workflow (MUST follow for every roadmap item)
 
 When the user asks to "execute the roadmap", "work on item N", or otherwise picks up a [docs/ROADMAP.md](docs/ROADMAP.md) entry, follow this loop for **each** item — do not skip steps even if the conversation is fresh:

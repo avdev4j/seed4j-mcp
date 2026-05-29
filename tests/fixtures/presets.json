@@ -1,0 +1,18 @@
+{
+  "presets": [
+    {
+      "name": "Java Library with Maven",
+      "modules": [
+        { "slug": "init" },
+        { "slug": "maven-java" }
+      ]
+    },
+    {
+      "name": "Java Library with Gradle",
+      "modules": [
+        { "slug": "init" },
+        { "slug": "gradle-java" }
+      ]
+    }
+  ]
+}

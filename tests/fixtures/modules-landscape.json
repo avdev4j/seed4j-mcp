@@ -1,0 +1,53 @@
+{
+  "levels": [
+    {
+      "elements": [
+        {
+          "type": "MODULE",
+          "slug": "init",
+          "operation": "APPLY",
+          "rank": "RANK_S",
+          "dependencies": []
+        }
+      ]
+    },
+    {
+      "elements": [
+        {
+          "type": "FEATURE",
+          "slug": "build-tool",
+          "modules": [
+            {
+              "type": "MODULE",
+              "slug": "maven-java",
+              "operation": "APPLY",
+              "rank": "RANK_A",
+              "dependencies": [{ "type": "MODULE", "slug": "init" }]
+            },
+            {
+              "type": "MODULE",
+              "slug": "gradle-java",
+              "operation": "APPLY",
+              "rank": "RANK_A",
+              "dependencies": [{ "type": "MODULE", "slug": "init" }]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "elements": [
+        {
+          "type": "MODULE",
+          "slug": "java-base",
+          "operation": "APPLY",
+          "rank": "RANK_B",
+          "dependencies": [
+            { "type": "MODULE", "slug": "init" },
+            { "type": "FEATURE", "slug": "build-tool" }
+          ]
+        }
+      ]
+    }
+  ]
+}
