@@ -2,6 +2,8 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promise
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { noopLogger, type Logger } from "./logger.js";
+
 export type Properties = Record<string, unknown>;
 
 export interface ApplyStep {
@@ -109,6 +111,7 @@ export interface Seed4jClientOptions {
   authHeader?: string;
   cacheTtlMs?: number;
   now?: NowFn;
+  logger?: Logger;
 }
 
 interface CacheEntry {
@@ -126,6 +129,7 @@ export class Seed4jClient {
   private readonly cacheTtlMs: number;
   private readonly now: NowFn;
   private readonly cache = new Map<string, CacheEntry>();
+  private readonly logger: Logger;
 
   constructor(
     private readonly baseUrl: string,
@@ -150,6 +154,7 @@ export class Seed4jClient {
     const requestedCache = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
     this.cacheTtlMs = requestedCache >= 0 ? Math.floor(requestedCache) : DEFAULT_CACHE_TTL_MS;
     this.now = options.now ?? defaultNow;
+    this.logger = options.logger ?? noopLogger();
   }
 
   clearCache(path?: string): void {
@@ -491,6 +496,7 @@ export class Seed4jClient {
     if (cacheable) {
       const hit = this.cache.get(path);
       if (hit && this.now() < hit.expiresAt) {
+        this.logger.log("debug", "cache.hit", { path });
         return hit.body;
       }
     }
@@ -508,6 +514,7 @@ export class Seed4jClient {
     });
     if (cacheable) {
       this.cache.set(path, { body, expiresAt: this.now() + this.cacheTtlMs });
+      this.logger.log("debug", "cache.populate", { path });
     }
     return body;
   }
@@ -525,6 +532,11 @@ export class Seed4jClient {
         }
         const exponent = Math.min(attempt, 10);
         const delay = Math.min(this.retryBaseDelayMs * 2 ** exponent, this.retryMaxDelayMs);
+        this.logger.log("info", "http.retry", {
+          attempt: attempt + 1,
+          delayMs: delay,
+          lastError: describeError(error),
+        });
         await this.sleep(delay);
         attempt += 1;
       }
@@ -558,15 +570,30 @@ export class Seed4jClient {
     const headers: Record<string, string> = this.authHeader
       ? { ...baseHeaders, Authorization: this.authHeader }
       : baseHeaders;
+    const requestPath = relativePath(this.baseUrl, url);
+    const startedAt = this.now();
+    this.logger.log("info", "http.request", { method, path: requestPath });
     return new Promise<Response>((resolve, reject) => {
       const controller = new AbortController();
       const timer = setTimeout(() => {
         controller.abort();
+        this.logger.log("warn", "http.timeout", {
+          method,
+          path: requestPath,
+          timeoutMs,
+        });
         reject(new TimeoutError(url, method, timeoutMs));
       }, timeoutMs);
       this.fetcher(url, { ...init, headers, signal: controller.signal })
         .then((response) => {
           clearTimeout(timer);
+          const latencyMs = Math.max(0, this.now() - startedAt);
+          this.logger.log(response.ok ? "info" : "warn", "http.response", {
+            method,
+            path: requestPath,
+            status: response.status,
+            latencyMs,
+          });
           resolve(response);
         })
         .catch((error: unknown) => {
@@ -575,6 +602,11 @@ export class Seed4jClient {
             reject(new TimeoutError(url, method, timeoutMs));
             return;
           }
+          this.logger.log("warn", "http.error", {
+            method,
+            path: requestPath,
+            error: describeError(error),
+          });
           reject(error as Error);
         });
     });
@@ -684,6 +716,20 @@ function isRetryableGetError(error: unknown): boolean {
   if (error instanceof TimeoutError) return true;
   if (error instanceof HttpError) return error.status >= 500;
   return error instanceof Error;
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof TimeoutError) return `TimeoutError: ${error.timeoutMs}ms`;
+  if (error instanceof HttpError) return `HttpError: ${error.status}`;
+  if (error instanceof Error) return `${error.name}: ${error.message}`;
+  return String(error);
+}
+
+function relativePath(baseUrl: string, absoluteUrl: string): string {
+  if (absoluteUrl.startsWith(baseUrl)) {
+    return absoluteUrl.slice(baseUrl.length) || "/";
+  }
+  return absoluteUrl;
 }
 
 function checkValue(definition: PropertyDefinition, value: unknown): string | null {

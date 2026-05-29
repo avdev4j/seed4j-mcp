@@ -108,11 +108,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** `createServer` reports the actual package version; no hardcoded literal remains.
 - **Shipped:** 2026-05-29 — new [src/version.ts](../src/version.ts) reads `package.json` once at module load and exports `PACKAGE_VERSION`. `createServer` defaults to it; `options.version` override preserved for tests. Fallback to `0.0.0` with a stderr warning on read failure. See [changelog.md](changelog.md#12--single-source-the-server-version).
 
-### 13. Optional file-based debug logging
+### ✅ 13. Optional file-based debug logging
 - **What:** Behind a `SEED4J_LOG_FILE` env var, log requests/responses/errors to a file (never stdout).
 - **Why:** Debugging STDIO MCP servers is painful precisely because stdout is off-limits; a file log is the safe escape hatch (the STDIO caveat in CLAUDE.md).
 - **Where:** new `src/logger.ts`, used in [src/client.ts](../src/client.ts) / [src/index.ts](../src/index.ts).
 - **Done when:** When the env var is set, structured lines are appended to the file; when unset, nothing is logged and stdout stays clean.
+- **Shipped:** 2026-05-29 — new [src/logger.ts](../src/logger.ts) (frozen no-op singleton when disabled, JSONL append-only stream when enabled). Client emits `http.request` / `http.response` / `http.timeout` / `http.error` / `http.retry` / `cache.hit` / `cache.populate` events. Authorization headers + request/response bodies never logged. See [logging.md](logging.md) and [changelog.md](changelog.md#13--optional-file-based-debug-logging).
 
 ### 14. Integration tests against a mock seed4j server
 - **What:** Stand up an in-process HTTP server returning recorded seed4j fixtures, and run the tools end-to-end against it.

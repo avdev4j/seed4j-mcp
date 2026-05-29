@@ -97,6 +97,18 @@ describe("loadConfig", () => {
     expect(config.clientOptions.authHeader).toBeUndefined();
   });
 
+  it("returns logFile: undefined when SEED4J_LOG_FILE is unset or blank", () => {
+    expect(loadConfig(env({})).logFile).toBeUndefined();
+    expect(loadConfig(env({ SEED4J_LOG_FILE: "" })).logFile).toBeUndefined();
+    expect(loadConfig(env({ SEED4J_LOG_FILE: "   " })).logFile).toBeUndefined();
+  });
+
+  it("returns a trimmed logFile when SEED4J_LOG_FILE is set", () => {
+    expect(loadConfig(env({ SEED4J_LOG_FILE: "  /tmp/seed4j.log  " })).logFile).toBe(
+      "/tmp/seed4j.log",
+    );
+  });
+
   it("parses SEED4J_CACHE_TTL_MS as a non-negative integer (0 disables)", () => {
     const zero = loadConfig(env({ SEED4J_CACHE_TTL_MS: "0" }));
     expect(zero.clientOptions.cacheTtlMs).toBe(0);

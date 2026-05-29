@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #13 — Optional file-based debug logging
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `SEED4J_LOG_FILE` env var enables a JSONL debug log that captures every outbound HTTP request, response, retry, cache hit/populate, timeout, and error — one structured line per event. Operators finally have a deterministic trail for "why did the apply call fail at 3am" on a STDIO MCP server where `console.log` is off-limits. When the var is unset (default), the logger is a frozen no-op singleton — zero overhead. Stdout is never written to. Authorization headers and request/response bodies are never logged.
+- **API change:** new module [`src/logger.ts`](../src/logger.ts) with `Logger`, `createLogger`, `noopLogger`. `Seed4jClient` accepts a `logger` option; `loadConfig` now returns `logFile`; the entrypoint constructs the logger, registers an `exit` close hook, and passes it to the client.
+- **Docs touched:** [configuration.md](configuration.md), [logging.md](logging.md) (new), [overview.md](overview.md), [README.md](README.md) (index).
+
 ### #12 — Single-source the server version
 
 - **Shipped:** 2026-05-29

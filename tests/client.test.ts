@@ -13,6 +13,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HttpError, Seed4jClient, TimeoutError, type FetchLike } from "../src/client.js";
+import type { LogLevel, Logger } from "../src/logger.js";
 
 const BASE_URL = "http://test";
 
@@ -1071,6 +1072,108 @@ describe("Seed4jClient", () => {
       expect(payload.ok).toBe(true);
       expect(directFetcher).toHaveBeenCalledTimes(2);
       cache.assertDrained();
+    });
+  });
+
+  describe("logger events", () => {
+    interface CapturedEvent {
+      level: LogLevel;
+      event: string;
+      fields: Record<string, unknown>;
+    }
+
+    function recorder(): { logger: Logger; events: CapturedEvent[] } {
+      const events: CapturedEvent[] = [];
+      const logger: Logger = {
+        log: (level, event, fields = {}) => {
+          events.push({ level, event, fields });
+        },
+        close: () => undefined,
+      };
+      return { logger, events };
+    }
+
+    it("emits http.request + http.response on a successful GET", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      const rec = recorder();
+      const observed = new Seed4jClient(BASE_URL, mocks.fetcher, { logger: rec.logger });
+      await observed.listModules();
+      const events = rec.events.map((e) => e.event);
+      expect(events).toContain("http.request");
+      expect(events).toContain("http.response");
+      const response = rec.events.find((e) => e.event === "http.response");
+      expect(response?.fields.status).toBe(200);
+      expect(response?.fields.path).toBe("/api/modules");
+    });
+
+    it("emits http.response with warn level on a non-2xx (no retry path)", async () => {
+      mocks.badRequest("nope");
+      const rec = recorder();
+      const observed = new Seed4jClient(BASE_URL, mocks.fetcher, {
+        logger: rec.logger,
+        retries: 0,
+      });
+      await expect(observed.listModules()).rejects.toBeInstanceOf(HttpError);
+      const response = rec.events.find((e) => e.event === "http.response");
+      expect(response?.level).toBe("warn");
+      expect(response?.fields.status).toBe(400);
+    });
+
+    it("emits http.timeout on a hung request", async () => {
+      const rec = recorder();
+      const hangingFetch: FetchLike = vi.fn(
+        (_input, init) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            );
+          }),
+      );
+      const observed = new Seed4jClient(BASE_URL, hangingFetch, {
+        logger: rec.logger,
+        timeoutMs: 15,
+        retries: 0,
+      });
+      await expect(observed.listModules()).rejects.toBeInstanceOf(TimeoutError);
+      const timeout = rec.events.find((e) => e.event === "http.timeout");
+      expect(timeout?.level).toBe("warn");
+      expect(timeout?.fields.timeoutMs).toBe(15);
+    });
+
+    it("emits http.retry with attempt + delay on a retried 5xx", async () => {
+      const rec = recorder();
+      const responses = [
+        new Response("boom", { status: 503 }),
+        new Response('{"categories":[]}', { status: 200 }),
+      ];
+      const fetcher: FetchLike = vi.fn(async () => responses.shift()!);
+      const observed = new Seed4jClient(BASE_URL, fetcher, {
+        logger: rec.logger,
+        retries: 2,
+        retryBaseDelayMs: 1,
+        sleep: vi.fn().mockResolvedValue(undefined),
+      });
+      await observed.listModules();
+      const retry = rec.events.find((e) => e.event === "http.retry");
+      expect(retry?.level).toBe("info");
+      expect(retry?.fields.attempt).toBe(1);
+      expect(retry?.fields.delayMs).toBe(1);
+      expect(String(retry?.fields.lastError)).toContain("HttpError");
+    });
+
+    it("emits cache.hit on a repeat list_modules and cache.populate on the first call", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      const rec = recorder();
+      const observed = new Seed4jClient(BASE_URL, mocks.fetcher, {
+        logger: rec.logger,
+        cacheTtlMs: 60_000,
+        now: () => 1_000,
+      });
+      await observed.listModules();
+      await observed.listModules();
+      const events = rec.events.map((e) => `${e.event}:${e.fields.path ?? ""}`);
+      expect(events).toContain("cache.populate:/api/modules");
+      expect(events).toContain("cache.hit:/api/modules");
     });
   });
 

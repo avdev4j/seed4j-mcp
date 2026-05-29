@@ -14,12 +14,7 @@ Invalid values **never** crash the server. Each bad value emits a single warning
 | `SEED4J_CACHE_TTL_MS` | `3600000` (1 hour) | TTL for the in-process catalogue cache covering `/api/modules`, `/api/modules-landscape`, and `/api/presets`. Must be a non-negative integer; set to `0` to disable caching (useful when iterating on seed4j itself). Errors are never cached. |
 | `SEED4J_AUTH_HEADER` | unset | Full `Authorization` header value sent on every outbound request, e.g. `Bearer abc.def`, `Basic dXNlcjpwYXNz`. Use this for any scheme other than bearer. |
 | `SEED4J_BEARER_TOKEN` | unset | Convenience shortcut: the server sends `Authorization: Bearer <value>`. Ignored if `SEED4J_AUTH_HEADER` is also set (a warning is emitted on stderr). |
-
-## Planned configuration (not implemented yet)
-
-| Variable | Roadmap | Purpose |
-| --- | --- | --- |
-| `SEED4J_LOG_FILE` | #13 | Path for file-based debug logging (stdout is off-limits). |
+| `SEED4J_LOG_FILE` | unset | Path to a writable JSONL log file. When set, the server appends one JSON line per outbound HTTP request, response, retry, cache hit/populate, timeout, and error. When unset (default), the logger is a frozen no-op singleton — zero overhead. Stdout is never written to (STDIO golden rule). See [logging.md](logging.md). |
 
 ## Launching the server
 

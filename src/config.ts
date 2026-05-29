@@ -10,6 +10,7 @@ export const DEFAULT_BASE_URL = "http://localhost:1339";
 export interface LoadedConfig {
   baseUrl: string;
   clientOptions: Seed4jClientOptions;
+  logFile: string | undefined;
   warnings: string[];
 }
 
@@ -68,7 +69,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): LoadedConfig {
     clientOptions.authHeader = `Bearer ${bearerToken}`;
   }
 
-  return { baseUrl, clientOptions, warnings };
+  const logFile = env.SEED4J_LOG_FILE?.trim() || undefined;
+
+  return { baseUrl, clientOptions, logFile, warnings };
 }
 
 function parsePositiveInteger(raw: string): number | null {

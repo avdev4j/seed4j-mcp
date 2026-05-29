@@ -19,6 +19,7 @@
 | Resources | [src/resources.ts](../src/resources.ts) | Read-only MCP resources for the catalogue (modules, landscape, presets). Re-uses the catalogue cache. |
 | Prompts | [src/prompts.ts](../src/prompts.ts) | MCP prompts encoding the curated-stack and custom-stack flows. Pure string templates — no HTTP. |
 | Version | [src/version.ts](../src/version.ts) | Reads `package.json` once at module load and exports `PACKAGE_VERSION`. Used by the server handshake; falls back to `0.0.0` on read failure (stderr warning, stdout untouched). |
+| Logger | [src/logger.ts](../src/logger.ts) | Opt-in JSONL file logger (`SEED4J_LOG_FILE`). No-op singleton when disabled. Used by the client to emit `http.*` and `cache.*` events. Never writes to stdout. |
 | Client | [src/client.ts](../src/client.ts) | HTTP calls into seed4j; the only layer that knows about `fetch`. |
 
 ## seed4j HTTP endpoints used
