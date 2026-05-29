@@ -30,8 +30,12 @@ Detailed setup per client (scopes, custom `SEED4J_BASE_URL`, global install) liv
 
 ## Documentation
 
-All reference docs live under [docs/](docs/):
+Start with [docs/getting-started.md](docs/getting-started.md) if you want to connect the server, verify seed4j is reachable, and run a first tool call.
 
+All documentation lives under [docs/](docs/):
+
+- [docs/README.md](docs/README.md) — documentation entry point with user, operator, and contributor reading paths.
+- [docs/getting-started.md](docs/getting-started.md) — install, connect, verify, and try a first MCP flow.
 - [docs/overview.md](docs/overview.md) — what the server is, the layers, the STDIO runtime contract.
 - [docs/tools.md](docs/tools.md) — every MCP tool exposed today, with inputs/outputs and when to use it.
 - [docs/resources.md](docs/resources.md) — read-only MCP resources for the catalogue (modules, landscape, presets).

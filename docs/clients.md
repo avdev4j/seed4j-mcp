@@ -73,4 +73,4 @@ If you installed `seed4j-mcp` globally, swap `npx`/`-y seed4j-mcp` for `seed4j-m
 
 ## Verifying the connection
 
-Once wired, the client should list 12 tools (see [tools.md](tools.md)). A first sanity check is to call `list_modules` — it returns the seed4j catalogue and confirms the server is reachable at the configured base URL.
+Once wired, the client should list the tools documented in [tools.md](tools.md). A first sanity check is to call `ping_seed4j`; it confirms whether seed4j is reachable at the configured base URL without mutating a project. `list_modules` is the next useful check because it returns the seed4j catalogue.

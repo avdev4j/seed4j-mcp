@@ -55,6 +55,6 @@ The returned message tells the agent to:
 
 ## What's not a prompt
 
-- **Removal flow** (roadmap #17). Will land as a third prompt (`seed4j-remove-module`) once the underlying `remove_module` tool exists.
+- **Removal flow.** The `remove_module` tool exists, but there is no dedicated `seed4j-remove-module` prompt yet. The tool's preview-first contract is documented in [tools.md](tools.md#remove_module).
 - **Bootstrap-from-scratch** combining preset + custom paths. Today the two prompts cover both cases; an agent that's unsure should ask the user which flow to take.
 - **Localisation.** English-only.

@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### Documentation onboarding rework
+
+- **Shipped:** 2026-05-29
+- **User impact:** docs now have a clearer first-reader path. [docs/README.md](README.md) points users, operators, and contributors to the right pages, and [getting-started.md](getting-started.md) walks through connecting an MCP client, verifying seed4j with `ping_seed4j`, and trying a first flow.
+- **Docs touched:** [README.md](../README.md), [docs/README.md](README.md), [getting-started.md](getting-started.md), [clients.md](clients.md), [prompts.md](prompts.md).
+
 ### #17 — Remove an applied module and its files
 
 - **Shipped:** 2026-05-29
