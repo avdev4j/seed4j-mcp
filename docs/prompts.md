@@ -8,15 +8,23 @@ This server registers two prompts, one per documented seed4j flow:
 | ---------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | `seed4j-curated-stack` | `list_presets → get_preset_details → preview_module → apply_preset`                               | `stackDescription` (required), `projectFolder` (optional) |
 | `seed4j-custom-stack`  | `search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules` | `stackDescription` (required), `projectFolder` (optional) |
+| `seed4j-remove-module` | `get_project_status → remove_module preview → remove_module confirm → get_project_status`         | `moduleSlug` (required), `projectFolder` (optional)       |
 
-## Arguments
+## Stack Prompt Arguments
 
-Both prompts accept the same two arguments:
+The curated and custom stack prompts accept the same two arguments:
 
 | Name               | Required | Description                                                                                                                               |
 | ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `stackDescription` | yes      | What the user wants to build, in their own words (e.g. `"Java library with Maven"`).                                                      |
 | `projectFolder`    | no       | Absolute path to the target project folder. Leave empty when the user hasn't decided yet — the prompt explicitly tells the caller to ask. |
+
+## Removal Prompt Arguments
+
+| Name            | Required | Description                                                                               |
+| --------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `moduleSlug`    | yes      | Slug of the applied module to remove (e.g. `"maven-java"`).                               |
+| `projectFolder` | no       | Absolute path to the target project folder. Leave empty when the user hasn't decided yet. |
 
 ## `seed4j-curated-stack`
 
@@ -55,6 +63,5 @@ The returned message tells the assistant, agent, or host workflow to:
 
 ## What's not a prompt
 
-- **Removal flow.** The `remove_module` tool exists, but there is no dedicated `seed4j-remove-module` prompt yet. The tool's preview-first contract is documented in [tools.md](tools.md#remove_module).
 - **Bootstrap-from-scratch** combining preset + custom paths. Today the two prompts cover both cases; a caller that's unsure should ask the user which flow to take.
 - **Localisation.** English-only.

@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #27 — Add a remove-module prompt
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `seed4j-remove-module` MCP prompt guides callers through safe module removal: status check, preview, surfacing locally-modified files, explicit confirmation, optional force only on explicit user request, and final status check.
+- **Prompt count:** 2 → **3**.
+- **Docs touched:** [prompts.md](prompts.md), [tools.md](tools.md), [ROADMAP.md](ROADMAP.md).
+
 ### #26 — Rework `create_project` failure behavior
 
 - **Shipped:** 2026-05-29

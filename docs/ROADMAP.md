@@ -240,12 +240,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Tests cover failed `init` after folder creation, and docs describe exactly what remains on disk and how callers should recover.
 - **Shipped:** 2026-05-29 — `create_project` removes a newly-created target folder if `init` fails before anything is written. Pre-existing folders and folders containing partial seed4j output remain for inspection/recovery. See [changelog.md](changelog.md#26--rework-create_project-failure-behavior).
 
-### 27. Add a remove-module prompt
+### ✅ 27. Add a remove-module prompt
 
 - **What:** Register a `seed4j-remove-module` prompt that guides callers through `get_project_status → remove_module` preview → user confirmation → confirmed `remove_module` → `get_project_status`.
 - **Why:** Removal can be destructive, especially with `force: true`. A prompt gives clients a safe named workflow.
 - **Where:** [src/prompts.ts](../src/prompts.ts), [tests/prompts.test.ts](../tests/prompts.test.ts), [docs/prompts.md](prompts.md), [docs/tools.md](tools.md), [docs/changelog.md](changelog.md).
 - **Done when:** `prompts/list` exposes `seed4j-remove-module`; the prompt text requires surfacing preview results and locally modified files before confirmation.
+- **Shipped:** 2026-05-29 — new `seed4j-remove-module` prompt guides callers through status check, preview, surfacing `locallyModifiedFiles`, explicit confirmation, force only on explicit user request, and final status verification. See [changelog.md](changelog.md#27--add-a-remove-module-prompt).
 
 ---
 

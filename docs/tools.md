@@ -210,7 +210,7 @@ The module catalogue, landscape, and preset list are **also** exposed as MCP res
 
 ## MCP prompts
 
-The two documented seed4j flows (curated stack, custom stack) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the calling assistant, agent, or host workflow does not have to infer it.
+The documented seed4j flows (curated stack, custom stack, and remove-module) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the calling assistant, agent, or host workflow does not have to infer it.
 
 ## Not yet exposed
 
