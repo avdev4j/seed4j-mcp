@@ -6,15 +6,15 @@ The goal is simple: a new user should be able to connect the server and run a fi
 
 ## Start Here
 
-| Goal                                                                 | Best first page                                                              |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Connect the MCP server and run a first tool call                     | [getting-started.md](getting-started.md)                                     |
-| Configure Claude Code, Claude Desktop, Cursor, or another MCP client | [clients.md](clients.md)                                                     |
-| Understand which tools, resources, and prompts MCP consumers can use | [tools.md](tools.md), [resources.md](resources.md), [prompts.md](prompts.md) |
-| Configure timeouts, retries, auth, cache, or logging                 | [configuration.md](configuration.md), [logging.md](logging.md)               |
-| Troubleshoot a failed call                                           | [errors.md](errors.md)                                                       |
-| Contribute to the server                                             | [develop.md](develop.md), [overview.md](overview.md)                         |
-| Verify compatibility with a seed4j upgrade                           | [seed4j-api.md](seed4j-api.md)                                               |
+| Goal                                                                        | Best first page                                                              |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Connect the MCP server and run a first tool call                            | [getting-started.md](getting-started.md)                                     |
+| Configure Codex, Claude Code, Claude Desktop, Cursor, or another MCP client | [clients.md](clients.md)                                                     |
+| Understand which tools, resources, and prompts MCP consumers can use        | [tools.md](tools.md), [resources.md](resources.md), [prompts.md](prompts.md) |
+| Configure timeouts, retries, auth, cache, or logging                        | [configuration.md](configuration.md), [logging.md](logging.md)               |
+| Troubleshoot a failed call                                                  | [errors.md](errors.md)                                                       |
+| Contribute to the server                                                    | [develop.md](develop.md), [overview.md](overview.md)                         |
+| Verify compatibility with a seed4j upgrade                                  | [seed4j-api.md](seed4j-api.md)                                               |
 
 ## Recommended Reading Paths
 
@@ -48,7 +48,7 @@ The goal is simple: a new user should be able to connect the server and run a fi
 - [tools.md](tools.md) — every MCP tool exposed today: name, inputs, output, and when to use it.
 - [resources.md](resources.md) — read-only MCP resources for the catalogue: modules, landscape, presets.
 - [prompts.md](prompts.md) — MCP prompts that encode the curated-stack and custom-stack flows.
-- [clients.md](clients.md) — wiring the server into Claude Code, Claude Desktop, Cursor, custom hosts, and other MCP clients.
+- [clients.md](clients.md) — wiring the server into Codex, Claude Code, Claude Desktop, Cursor, custom hosts, and other MCP clients.
 - [configuration.md](configuration.md) — env vars consumed at startup and their defaults.
 - [errors.md](errors.md) — how failures are surfaced to MCP clients and agents.
 - [logging.md](logging.md) — opt-in JSONL debug log (`SEED4J_LOG_FILE`), events, and redaction notes.

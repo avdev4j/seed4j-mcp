@@ -13,7 +13,7 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 ### Documentation MCP consumer wording
 
 - **Shipped:** 2026-05-29
-- **User impact:** docs now describe the server as usable by MCP clients, AI coding assistants, autonomous agents, IDE integrations, automation runners, and custom host applications. Claude remains documented as an example client, not the assumed consumer.
+- **User impact:** docs now describe the server as usable by MCP clients, AI coding assistants, autonomous agents, IDE integrations, automation runners, and custom host applications. Codex and Claude are documented as example clients, not assumed consumers.
 - **Docs touched:** [README.md](../README.md), [docs/README.md](README.md), [getting-started.md](getting-started.md), [clients.md](clients.md), [configuration.md](configuration.md), [overview.md](overview.md), [tools.md](tools.md), [prompts.md](prompts.md), [errors.md](errors.md), [seed4j-api.md](seed4j-api.md).
 
 ### #17 — Remove an applied module and its files

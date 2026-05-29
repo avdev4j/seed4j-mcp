@@ -18,6 +18,30 @@ npm install -g seed4j-mcp
 
 To build from source, see [develop.md](develop.md).
 
+## Codex
+
+Use the `codex mcp add` command:
+
+```bash
+codex mcp add seed4j -- npx -y seed4j-mcp
+```
+
+Pass a custom seed4j URL — or any other [supported env var](configuration.md) — with `--env`:
+
+```bash
+codex mcp add seed4j \
+  --env SEED4J_BASE_URL=https://seed4j.example.com \
+  --env SEED4J_BEARER_TOKEN=eyJhbGciOi... \
+  --env SEED4J_TIMEOUT_MS=60000 \
+  -- npx -y seed4j-mcp
+```
+
+Verify it's wired up:
+
+```bash
+codex mcp list
+```
+
 ## Claude Code
 
 Use the `claude mcp add` command. Pick a scope: `local` (default — current project, your machine), `project` (committed to `.mcp.json`, shared with the team), or `user` (your machine, every project).

@@ -34,4 +34,4 @@ SEED4J_BASE_URL=http://localhost:7471 npm run dev
 
 A seed4j instance must be reachable at `SEED4J_BASE_URL` for any tool call to succeed.
 
-When wiring the server into an MCP client or host (Claude Code, Claude Desktop, Cursor, an IDE integration, an automation runner, …), pass these env vars through the client's MCP server config. See [clients.md](clients.md) for examples.
+When wiring the server into an MCP client or host (Codex, Claude Code, Claude Desktop, Cursor, an IDE integration, an automation runner, …), pass these env vars through the client's MCP server config. See [clients.md](clients.md) for examples.

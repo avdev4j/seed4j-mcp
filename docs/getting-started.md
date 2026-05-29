@@ -5,7 +5,7 @@ This guide gets `seed4j-mcp` from "never seen it before" to "connected to an MCP
 ## What you need
 
 - Node.js 20+
-- An MCP-capable client, such as Claude Code, Claude Desktop, Cursor, an IDE integration, an automation runner, or a custom MCP host
+- An MCP-capable client, such as Codex, Claude Code, Claude Desktop, Cursor, an IDE integration, an automation runner, or a custom MCP host
 - A running seed4j instance reachable over HTTP
 
 By default the MCP server expects seed4j at `http://localhost:1339`. If your seed4j instance runs elsewhere, set `SEED4J_BASE_URL`.
@@ -39,7 +39,13 @@ The server speaks MCP over STDIO. It is usually launched by an MCP client, not b
 
 ## 3. Connect an MCP client
 
-For Claude Code, use the CLI helper:
+For Codex:
+
+```bash
+codex mcp add seed4j -- npx -y seed4j-mcp
+```
+
+For Claude Code:
 
 ```bash
 claude mcp add seed4j --scope project -- npx -y seed4j-mcp
@@ -62,6 +68,12 @@ For Claude Desktop, Cursor, and other JSON-configured MCP clients or hosts:
 ```
 
 When seed4j runs somewhere else, pass the base URL:
+
+```bash
+codex mcp add seed4j \
+  --env SEED4J_BASE_URL=https://seed4j.example.com \
+  -- npx -y seed4j-mcp
+```
 
 ```bash
 claude mcp add seed4j \
