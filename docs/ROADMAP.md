@@ -168,12 +168,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ## Follow-up hardening
 
-### 18. Fix `remove_module` replay correctness for non-last modules
+### ✅ 18. Fix `remove_module` replay correctness for non-last modules
 
 - **What:** Rework `remove_module` so the "with target" scratch replay uses the full project history, while the "without target" scratch replay uses the full history minus the removed action. Today the with-target side only replays up to the target action, which can misclassify files when later modules modify the same paths.
 - **Why:** Removing a module from the middle of the history should compare the current generated end-state with and without that module, not an intermediate historical state. This makes previews and confirmed removals safer and less surprising.
 - **Where:** [src/client.ts](../src/client.ts) `removeModule`, [tests/client.test.ts](../tests/client.test.ts), [docs/tools.md](tools.md), [docs/changelog.md](changelog.md).
 - **Done when:** Unit tests cover removing a module followed by a later module that touches the same file; preview and confirm classify only the target module's net contribution against the final generated state.
+- **Shipped:** 2026-05-29 — `remove_module` now replays full history on the with-target side and full history minus the target on the without-target side. This fixes mid-history removals where later modules rewrite the same file. `modulesReplayed` now reports the total scratch apply calls across both replays. See [changelog.md](changelog.md#18--fix-remove_module-replay-correctness-for-non-last-modules).
 
 ### 19. Make integration tests fail fast when local sockets are unavailable
 

@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #18 — Fix `remove_module` replay correctness for non-last modules
+
+- **Shipped:** 2026-05-29
+- **User impact:** `remove_module` now compares the final generated project state with the target module against the final generated project state without it. Removing a module from the middle of the history no longer misclassifies files that later modules also touched. The preview's `modulesReplayed` field now reports the total scratch apply calls across both replays.
+- **Docs touched:** [tools.md](tools.md), [ROADMAP.md](ROADMAP.md).
+
 ### Documentation onboarding rework
 
 - **Shipped:** 2026-05-29

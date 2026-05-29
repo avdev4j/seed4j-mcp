@@ -409,7 +409,7 @@ export class Seed4jClient {
     const withTargetDir = await mkdtemp(path.join(tmpdir(), "seed4j-remove-with-"));
     const withoutTargetDir = await mkdtemp(path.join(tmpdir(), "seed4j-remove-without-"));
     try {
-      const withActions = history.actions.slice(0, actionIndex + 1);
+      const withActions = history.actions;
       const withoutActions = history.actions.filter(
         (_: SeedHistoryAction, i: number) => i !== actionIndex,
       );
@@ -465,7 +465,7 @@ export class Seed4jClient {
           projectFolder,
           action: "preview",
           actionIndex,
-          modulesReplayed: withoutActions.length,
+          modulesReplayed: withActions.length + withoutActions.length,
           filesToDelete,
           filesToRevert,
           locallyModifiedFiles,

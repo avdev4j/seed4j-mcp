@@ -141,7 +141,7 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
 ### `remove_module`
 
 - **Input:** `moduleSlug: string`, `projectFolder: string`, `confirm?: boolean` (default `false`), `force?: boolean` (default `false`).
-- **Behaviour:** removes a previously-applied module by reading the project's [`.seed4j/modules/history.json`](seed4j-api.md#seed4jmoduleshistoryjson), replaying the history twice into scratch dirs — with the target and without — using each action's **own** properties, and diffing both against the current project folder. Classifies each touched file as **clean** (current bytes match the install snapshot) or **locally-modified** (current bytes differ — typically business code the user added on top of the scaffold). With `confirm: true`, deletes clean added files, reverts clean modified files to their pre-install content, skips locally-modified files (unless `force: true`), and writes `.seed4j/modules/history.json` back atomically with the targeted action removed. Cost: ~2 × N apply-patch calls, where N is the number of applied modules. `.git/` and `.seed4j/` are excluded from the diff on every side.
+- **Behaviour:** removes a previously-applied module by reading the project's [`.seed4j/modules/history.json`](seed4j-api.md#seed4jmoduleshistoryjson), replaying the full history twice into scratch dirs — final state with the target and final state without — using each action's **own** properties, and diffing both against the current project folder. Classifies each touched file as **clean** (current bytes match the generated final state with the target) or **locally-modified** (current bytes differ — typically business code the user added on top of the scaffold). With `confirm: true`, deletes clean added files, reverts clean modified files to their generated final state without the target, skips locally-modified files (unless `force: true`), and writes `.seed4j/modules/history.json` back atomically with the targeted action removed. Cost: up to `2 × N - 1` apply-patch calls, where N is the number of applied modules. `.git/` and `.seed4j/` are excluded from the diff on every side.
 - **Output (preview, default):**
   ```json
   {
@@ -149,7 +149,7 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
     "projectFolder": "/Users/.../app",
     "action": "preview",
     "actionIndex": 1,
-    "modulesReplayed": 1,
+    "modulesReplayed": 3,
     "filesToDelete": [{ "path": "pom.xml", "sizeBytes": 1800 }],
     "filesToRevert": [{ "path": ".gitignore", "currentSizeBytes": 200, "revertedSizeBytes": 100 }],
     "locallyModifiedFiles": [

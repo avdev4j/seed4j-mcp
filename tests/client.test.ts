@@ -775,6 +775,38 @@ describe("Seed4jClient", () => {
       }
     });
 
+    it("preview compares final generated states when a later module rewrites the target file", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [
+          { module: "init" },
+          { module: "maven-java" },
+          { module: "spring-boot" },
+        ]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<spring/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+          "spring-boot": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<spring/>");
+          },
+        });
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("preview");
+        expect(payload.modulesReplayed).toBe(5);
+        expect(payload.filesToDelete).toEqual([]);
+        expect(payload.filesToRevert).toEqual([]);
+        expect(payload.locallyModifiedFiles).toEqual([]);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
     it("confirm deletes clean files, reverts modified files, and updates history.json", async () => {
       const fx = removeFixture();
       try {
