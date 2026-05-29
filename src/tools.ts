@@ -166,7 +166,7 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
     {
       name: "remove_module",
       description:
-        "Remove a previously-applied seed4j module from a project: identifies the files that module installed (by replaying the project's history twice — with and without the target — into scratch dirs), classifies them as clean-since-install vs locally-modified (the latter typically contains business code the user added on top of the scaffold), and either previews or executes deletion/revert. Default mode is preview — no disk mutation. Set confirm: true to execute. By default, locally-modified files are skipped; set force: true to act on them too. On a successful confirm, also updates .seed4j/modules/history.json so get_project_status reflects the removal. The operation is heavyweight: replays ~2N apply-patch calls (N = number of applied modules in the project's history). Before flipping confirm: true, surface the locallyModifiedFiles list to the user — those are the files the agent will skip or destroy.",
+        "Remove a previously-applied seed4j module from a project: identifies the files that module installed (by replaying the project's history twice — with and without the target — into scratch dirs), classifies them as clean-since-install vs locally-modified (the latter typically contains business code the user added on top of the scaffold), and either previews or executes deletion/revert. Default mode is preview — no disk mutation. Set confirm: true to execute. By default, locally-modified files are skipped; set force: true to act on them too. On a successful confirm, also updates .seed4j/modules/history.json so get_project_status reflects the removal. The operation is heavyweight: replays ~2N apply-patch calls (N = number of applied modules in the project's history). Before flipping confirm: true, surface the locallyModifiedFiles list to the user — those are the files the caller will skip or destroy.",
       inputSchema: {
         moduleSlug: z.string().describe("Slug identifier of the seed4j module to remove."),
         projectFolder: z
@@ -198,7 +198,7 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
     {
       name: "preview_module",
       description:
-        "Dry-run a seed4j module against a scratch copy of the project folder and return the list of files that would change (added/modified/deleted) — without touching the real project. Auto-selects 'copy' mode when the folder exists (diff vs current project state) or 'empty' mode when it doesn't (e.g. previewing 'init' before create_project). Always runs with commit: false. Pair with validate_properties before apply_module when the agent wants to show the user a concrete plan.",
+        "Dry-run a seed4j module against a scratch copy of the project folder and return the list of files that would change (added/modified/deleted) — without touching the real project. Auto-selects 'copy' mode when the folder exists (diff vs current project state) or 'empty' mode when it doesn't (e.g. previewing 'init' before create_project). Always runs with commit: false. Pair with validate_properties before apply_module when the caller wants to show the user a concrete plan.",
       inputSchema: {
         moduleSlug: z.string().describe("Slug identifier of the seed4j module to preview."),
         projectFolder: z

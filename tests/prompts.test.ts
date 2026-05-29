@@ -42,6 +42,13 @@ describe("MCP prompt registry", () => {
     }
   });
 
+  it("uses provider-neutral descriptions", () => {
+    for (const prompt of buildPrompts()) {
+      expect(prompt.description).not.toContain("the agent");
+      expect(prompt.argsSchema.projectFolder.description).not.toContain("the agent");
+    }
+  });
+
   it("each prompt declares stackDescription (required) and projectFolder (optional)", () => {
     for (const prompt of buildPrompts()) {
       expect(prompt.argsSchema.stackDescription.safeParse("ok").success).toBe(true);

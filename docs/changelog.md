@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #22 — Make runtime MCP descriptions provider-neutral
+
+- **Shipped:** 2026-05-29
+- **User impact:** MCP clients now see provider-neutral tool, resource, and prompt descriptions. Runtime strings refer to callers, assistants, agents, or host workflows instead of assuming a single generic "agent".
+- **Docs touched:** [ROADMAP.md](ROADMAP.md).
+
 ### #21 — Run full quality gates before publishing
 
 - **Shipped:** 2026-05-29

@@ -90,6 +90,7 @@ describe("MCP tool registry", () => {
   it("each tool has a non-empty description", () => {
     for (const tool of buildTools(client)) {
       expect(tool.description.length).toBeGreaterThan(0);
+      expect(tool.description).not.toContain("the agent");
     }
   });
 

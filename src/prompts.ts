@@ -34,7 +34,7 @@ const sharedArgsSchema = {
     .string()
     .optional()
     .describe(
-      "Absolute path to the project folder. Leave empty if the user hasn't decided yet — the agent will ask.",
+      "Absolute path to the project folder. Leave empty if the user hasn't decided yet — the caller will ask.",
     ),
 };
 
@@ -43,7 +43,7 @@ export function buildPrompts(): PromptDefinition[] {
     {
       name: "seed4j-curated-stack",
       description:
-        "Scaffold a seed4j project using one of the curated presets. Encodes the list_presets → get_preset_details → preview_module → apply_preset flow so the agent picks the right preset and shows the user a plan before mutating disk.",
+        "Scaffold a seed4j project using one of the curated presets. Encodes the list_presets → get_preset_details → preview_module → apply_preset flow so the calling assistant, agent, or host workflow picks the right preset and shows the user a plan before mutating disk.",
       argsSchema: sharedArgsSchema,
       handler: (args) => ({
         messages: [
@@ -57,7 +57,7 @@ export function buildPrompts(): PromptDefinition[] {
     {
       name: "seed4j-custom-stack",
       description:
-        "Scaffold a seed4j project from individual modules (no preset). Encodes the search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules flow so the agent assembles a coherent stack and stops to ask the user when feature choices need disambiguation.",
+        "Scaffold a seed4j project from individual modules (no preset). Encodes the search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules flow so the calling assistant, agent, or host workflow assembles a coherent stack and stops to ask the user when feature choices need disambiguation.",
       argsSchema: sharedArgsSchema,
       handler: (args) => ({
         messages: [

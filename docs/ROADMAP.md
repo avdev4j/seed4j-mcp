@@ -200,12 +200,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** The release job fails before publish if lint, format, typecheck, build, or test fails.
 - **Shipped:** 2026-05-29 — release now runs lint, format check, typecheck, build, and tests as separate gates before `npm publish`. See [changelog.md](changelog.md#21--run-full-quality-gates-before-publishing).
 
-### 22. Make runtime MCP descriptions provider-neutral
+### ✅ 22. Make runtime MCP descriptions provider-neutral
 
 - **What:** Update tool/resource/prompt descriptions and prompt text that still says "the agent" when it really means any MCP client, assistant, agent, or host workflow.
 - **Why:** MCP clients display these descriptions directly. The runtime surface should be as provider-neutral as the human documentation.
 - **Where:** [src/tools.ts](../src/tools.ts), [src/resources.ts](../src/resources.ts), [src/prompts.ts](../src/prompts.ts), [tests/prompts.test.ts](../tests/prompts.test.ts), [docs/changelog.md](changelog.md).
 - **Done when:** Runtime descriptions no longer imply Claude or a single agent type unless the specific context requires it; prompt tests still pass.
+- **Shipped:** 2026-05-29 — runtime tool, resource, prompt, and prompt-argument descriptions now use provider-neutral caller wording. Tests guard against reintroducing "the agent" in exposed descriptions. See [changelog.md](changelog.md#22--make-runtime-mcp-descriptions-provider-neutral).
 
 ### 23. Add a stack planning tool
 

@@ -43,6 +43,7 @@ describe("MCP resource registry", () => {
   it("each resource has a non-empty description and an application/json mime type", () => {
     for (const resource of buildResources(client)) {
       expect(resource.description.length).toBeGreaterThan(0);
+      expect(resource.description).not.toContain("the agent");
       expect(resource.mimeType).toBe("application/json");
     }
   });
