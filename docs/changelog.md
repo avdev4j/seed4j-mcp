@@ -4,6 +4,13 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #10 — Expose the catalogue as MCP resources
+
+- **Shipped:** 2026-05-29
+- **User impact:** the module catalogue, landscape, and preset list are now also available as MCP **resources** alongside the existing tools — addressable via `seed4j://catalogue/modules`, `seed4j://catalogue/landscape`, and `seed4j://catalogue/presets`. Clients that render `resources/list` (resource pickers, sidebars) can browse the catalogue without burning a tool call, and the data can be attached to a conversation once instead of being re-fetched every turn. Resource reads hit the same catalogue cache the tools use, so a tool call and a resource read for the same backing endpoint share the same cache entry.
+- **API change:** new public `Seed4jClient.getModulesLandscape()` (existing inline `getText("/api/modules-landscape")` callers unchanged). New module [`src/resources.ts`](../src/resources.ts) with `buildResources` / `registerResources`. `src/server.ts` now calls both registrations. No change to existing tools.
+- **Docs touched:** [overview.md](overview.md), [tools.md](tools.md), [resources.md](resources.md) (new), [README.md](README.md) (index).
+
 ### #9 — Dry-run / preview before applying a module
 
 - **Shipped:** 2026-05-28

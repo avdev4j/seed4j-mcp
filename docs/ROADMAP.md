@@ -83,11 +83,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ## MCP surface
 
-### 10. Expose the catalogue as MCP resources
+### ✅ 10. Expose the catalogue as MCP resources
 - **What:** Register the module catalogue, landscape, and preset list as MCP **resources** (read-only, addressable URIs) in addition to the tools.
 - **Why:** Resources let clients browse/attach the catalogue without a tool call, and keep large static data out of tool-call round-trips.
 - **Where:** [src/server.ts](../src/server.ts), new `src/resources.ts`.
 - **Done when:** `resources/list` and `resources/read` return the catalogue; cache (#5) is reused.
+- **Shipped:** 2026-05-29 — three resources (`seed4j://catalogue/modules`, `seed4j://catalogue/landscape`, `seed4j://catalogue/presets`) registered alongside the tools, all `application/json`, all backed by the catalogue cache from #5. A tool call and a resource read for the same endpoint share the same cache entry. See [resources.md](resources.md) and [changelog.md](changelog.md#10--expose-the-catalogue-as-mcp-resources).
 
 ### 11. Ship MCP prompts for common flows
 - **What:** Register prompts for the two documented flows ("curated stack" and "custom stack") so clients can offer them as slash-style starting points.

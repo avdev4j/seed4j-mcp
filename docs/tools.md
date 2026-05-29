@@ -121,7 +121,11 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 
 Set `commit: true` when scaffolding a project end-to-end and the caller wants a **clean per-feature git history** (one commit per applied module — easy to bisect, easy to revert one step). Keep the default `false` for speculative or validation runs, where rolling back is simpler without intermediate commits. Per-step `commit` overrides inside `apply_modules` / `apply_preset` are not exposed — the flag is a single top-level choice.
 
+## MCP resources
+
+The module catalogue, landscape, and preset list are **also** exposed as MCP resources — see [resources.md](resources.md). The tools above remain the right choice for inline / per-turn use; resources are for browsing and one-shot attachment.
+
 ## Not yet exposed
 
-- MCP resources (roadmap item 10) and prompts (roadmap item 11).
+- MCP prompts (roadmap item 11).
 - Module removal / uninstall (roadmap item 17).

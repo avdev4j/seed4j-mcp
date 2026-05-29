@@ -14,8 +14,9 @@
 | --- | --- | --- |
 | Entry point | [src/index.ts](../src/index.ts) | Load config from env, emit warnings on stderr, build the client, wire the STDIO transport, connect the server. |
 | Config | [src/config.ts](../src/config.ts) | Pure env → `{ baseUrl, clientOptions, warnings }` parser. No I/O. |
-| Server | [src/server.ts](../src/server.ts) | Construct the `McpServer` and register tools. |
-| Tools | [src/tools.ts](../src/tools.ts) | The MCP-facing surface — names, descriptions, zod schemas, handlers. |
+| Server | [src/server.ts](../src/server.ts) | Construct the `McpServer` and register tools + resources. |
+| Tools | [src/tools.ts](../src/tools.ts) | The MCP-facing tools surface — names, descriptions, zod schemas, handlers. |
+| Resources | [src/resources.ts](../src/resources.ts) | Read-only MCP resources for the catalogue (modules, landscape, presets). Re-uses the catalogue cache. |
 | Client | [src/client.ts](../src/client.ts) | HTTP calls into seed4j; the only layer that knows about `fetch`. |
 
 ## seed4j HTTP endpoints used
@@ -24,12 +25,12 @@ These paths are inherited from the JHipster-Lite-style API. Verify them against 
 
 | Method | Path | Used by |
 | --- | --- | --- |
-| GET | `/api/modules` | `list_modules`, `search_modules`, `ping_seed4j` (liveness probe) |
+| GET | `/api/modules` | `list_modules`, `search_modules`, `ping_seed4j` (liveness probe), resource `seed4j://catalogue/modules` |
 | GET | `/api/modules/{slug}` | `get_module_details`, `validate_properties` |
 | POST | `/api/modules/{slug}/apply-patch` | `apply_module`, `apply_modules`, `apply_preset`, `create_project`, `preview_module` (against a scratch dir; never the user's project) |
-| GET | `/api/presets` | `list_presets`, `get_preset_details`, `apply_preset` |
+| GET | `/api/presets` | `list_presets`, `get_preset_details`, `apply_preset`, resource `seed4j://catalogue/presets` |
 | GET | `/api/projects?path=…` | `get_project_status` |
-| GET | `/api/modules-landscape` | `get_module_dependencies` |
+| GET | `/api/modules-landscape` | `get_module_dependencies`, resource `seed4j://catalogue/landscape` |
 | GET | `/management/info` | `ping_seed4j` (version probe, best-effort) |
 
 `create_project` is **not** a dedicated endpoint: it `mkdir`s the target folder locally and then applies the `init` module via `apply-patch`.

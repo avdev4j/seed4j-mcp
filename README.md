@@ -34,6 +34,7 @@ All reference docs live under [docs/](docs/):
 
 - [docs/overview.md](docs/overview.md) — what the server is, the layers, the STDIO runtime contract.
 - [docs/tools.md](docs/tools.md) — every MCP tool exposed today, with inputs/outputs and when to use it.
+- [docs/resources.md](docs/resources.md) — read-only MCP resources for the catalogue (modules, landscape, presets).
 - [docs/clients.md](docs/clients.md) — wiring the server into Claude Code, Claude Desktop, Cursor, …
 - [docs/configuration.md](docs/configuration.md) — environment variables and their defaults.
 - [docs/errors.md](docs/errors.md) — how failures surface to the agent.

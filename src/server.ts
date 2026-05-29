@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { Seed4jClient } from "./client.js";
+import { registerResources } from "./resources.js";
 import { registerTools } from "./tools.js";
 
 export interface ServerOptions {
@@ -14,5 +15,6 @@ export function createServer(client: Seed4jClient, options: ServerOptions = {}):
     version: options.version ?? "0.0.1",
   });
   registerTools(server, client);
+  registerResources(server, client);
   return server;
 }

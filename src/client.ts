@@ -226,6 +226,10 @@ export class Seed4jClient {
     return this.getText("/api/presets");
   }
 
+  getModulesLandscape(): Promise<string> {
+    return this.getText("/api/modules-landscape");
+  }
+
   async getPresetDetails(presetName: string): Promise<string> {
     if (!presetName || !presetName.trim()) {
       throw new Error("Preset name is required");
