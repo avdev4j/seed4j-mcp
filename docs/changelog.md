@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #20 — Run CI against every supported Node major
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. CI now checks Node 20, 22, and 24, matching the package's advertised Node 20+ support and catching accidental newer-Node-only changes.
+- **Docs touched:** [develop.md](develop.md), [ROADMAP.md](ROADMAP.md).
+
 ### #19 — Make integration tests fail fast when local sockets are unavailable
 
 - **Shipped:** 2026-05-29

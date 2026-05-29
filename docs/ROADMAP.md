@@ -184,12 +184,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** A listen failure surfaces as a single clear setup error; `afterEach` does not throw when setup failed; normal integration tests still pass where sockets are allowed.
 - **Shipped:** 2026-05-29 — the integration mock server now rejects its startup promise on `listen` errors and cleanup skips close when setup did not finish. Restricted sandboxes surface the underlying `EPERM` immediately instead of per-test hook timeouts. See [changelog.md](changelog.md#19--make-integration-tests-fail-fast-when-local-sockets-are-unavailable).
 
-### 20. Run CI against every supported Node major
+### ✅ 20. Run CI against every supported Node major
 
 - **What:** Replace the single Node 24 CI run with a matrix covering Node 20, 22, and 24.
 - **Why:** `package.json` advertises Node 20+, so CI must catch accidental use of APIs that only work on newer Node versions.
 - **Where:** [.github/workflows/ci.yml](../.github/workflows/ci.yml), [docs/develop.md](develop.md), [docs/changelog.md](changelog.md).
 - **Done when:** CI runs lint, format, typecheck, build, and tests for Node 20, 22, and 24.
+- **Shipped:** 2026-05-29 — CI now uses a Node 20/22/24 matrix with the same lint, format, typecheck, build, and test gates on each supported major. See [changelog.md](changelog.md#20--run-ci-against-every-supported-node-major).
 
 ### 21. Run full quality gates before publishing
 
