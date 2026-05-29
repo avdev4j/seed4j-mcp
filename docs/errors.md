@@ -103,13 +103,14 @@ Thrown when the `AbortController` armed for `timeoutMs` (default 30 s, override 
 
 Some client methods throw plain `Error`s before any HTTP call. After wrapping these surface as `error: "client"`:
 
-| Method                  | Throws when                                            |
-| ----------------------- | ------------------------------------------------------ |
-| `getPresetDetails`      | preset name is blank or no preset matches.             |
-| `applyModules`          | the step list is empty.                                |
-| `applyPreset`           | the preset resolves to zero modules.                   |
-| `getModuleDependencies` | the slug is not found in the landscape.                |
-| `validateProperties`    | (does not throw — returns `{ valid: false, errors }`). |
+| Method                  | Throws when                                               |
+| ----------------------- | --------------------------------------------------------- |
+| mutation tools          | `projectFolder` is empty, relative, or a filesystem root. |
+| `getPresetDetails`      | preset name is blank or no preset matches.                |
+| `applyModules`          | the step list is empty.                                   |
+| `applyPreset`           | the preset resolves to zero modules.                      |
+| `getModuleDependencies` | the slug is not found in the landscape.                   |
+| `validateProperties`    | (does not throw — returns `{ valid: false, errors }`).    |
 
 ## Retries on transient GET failures
 

@@ -377,12 +377,13 @@ export class Seed4jClient {
   }
 
   // Contract: docs/seed4j-api.md#post-apimodulesslugapply-patch
-  applyModule(
+  async applyModule(
     moduleSlug: string,
     projectFolder: string,
     properties: Properties,
     commit = false,
   ): Promise<string> {
+    assertSafeMutationProjectFolder(projectFolder);
     const body = {
       projectFolder,
       commit,
@@ -396,6 +397,7 @@ export class Seed4jClient {
     properties: Properties,
     commit = false,
   ): Promise<string> {
+    assertSafeMutationProjectFolder(projectFolder);
     await mkdir(projectFolder, { recursive: true });
     return this.applyModule("init", projectFolder, properties, commit);
   }
@@ -407,6 +409,8 @@ export class Seed4jClient {
   ): Promise<string> {
     const confirm = !!options.confirm;
     const force = !!options.force;
+
+    assertSafeMutationProjectFolder(projectFolder);
 
     const history = await readSeed4jHistory(projectFolder);
     if (!history || history.actions.length === 0) {
@@ -582,6 +586,7 @@ export class Seed4jClient {
   }
 
   async applyModules(projectFolder: string, steps: ApplyStep[], commit = false): Promise<string> {
+    assertSafeMutationProjectFolder(projectFolder);
     if (!steps || steps.length === 0) {
       throw new Error("At least one module step is required");
     }
@@ -627,6 +632,7 @@ export class Seed4jClient {
     properties: Properties,
     commit = false,
   ): Promise<string> {
+    assertSafeMutationProjectFolder(projectFolder);
     const preset = JSON.parse(await this.getPresetDetails(presetName)) as {
       modules?: Array<{ slug?: string }>;
     };
@@ -996,6 +1002,20 @@ async function directoryExists(folder: string): Promise<boolean> {
     return info.isDirectory();
   } catch {
     return false;
+  }
+}
+
+function assertSafeMutationProjectFolder(projectFolder: string): void {
+  const trimmed = projectFolder.trim();
+  if (!trimmed) {
+    throw new Error("Unsafe projectFolder: expected a non-empty absolute path");
+  }
+  if (!path.isAbsolute(trimmed)) {
+    throw new Error(`Unsafe projectFolder: expected an absolute path, got "${projectFolder}"`);
+  }
+  const resolved = path.resolve(trimmed);
+  if (resolved === path.parse(resolved).root) {
+    throw new Error(`Unsafe projectFolder: refusing to mutate filesystem root "${resolved}"`);
   }
 }
 

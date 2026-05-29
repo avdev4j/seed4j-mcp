@@ -128,6 +128,8 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 
 ## Project mutation (writes)
 
+Mutation tools reject unsafe `projectFolder` values before writing locally or calling seed4j: the path must be non-empty, absolute, and below the filesystem root. Read-only status and preview tools still accept the path shape documented on their individual inputs.
+
 ### `create_project`
 
 - **Input:** `projectFolder: string`, `properties: Record<string, unknown>`, `commit?: boolean` (default `false`).

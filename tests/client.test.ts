@@ -588,6 +588,20 @@ describe("Seed4jClient", () => {
       await client.applyModule("maven-java", "/tmp/app", {}, true);
       expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
     });
+
+    it("rejects a relative project folder before posting", async () => {
+      await expect(client.applyModule("maven-java", "relative/app", {})).rejects.toThrow(
+        /absolute path/,
+      );
+      expect(mocks.calls).toHaveLength(0);
+    });
+
+    it("rejects the filesystem root before posting", async () => {
+      await expect(
+        client.applyModule("maven-java", path.parse(process.cwd()).root, {}),
+      ).rejects.toThrow(/filesystem root/);
+      expect(mocks.calls).toHaveLength(0);
+    });
   });
 
   describe("applyModules", () => {
@@ -629,6 +643,13 @@ describe("Seed4jClient", () => {
 
     it("rejects an empty step list", async () => {
       await expect(client.applyModules("/tmp/app", [])).rejects.toThrow();
+    });
+
+    it("rejects an unsafe project folder before applying any step", async () => {
+      await expect(
+        client.applyModules("relative/app", [{ slug: "init", properties: {} }]),
+      ).rejects.toThrow(/absolute path/);
+      expect(mocks.calls).toHaveLength(0);
     });
 
     it("forwards commit: true to every step's POST body", async () => {
@@ -695,6 +716,13 @@ describe("Seed4jClient", () => {
       expect(JSON.parse(mocks.calls[1]?.body ?? "{}").commit).toBe(true);
       expect(JSON.parse(mocks.calls[2]?.body ?? "{}").commit).toBe(true);
     });
+
+    it("rejects an unsafe project folder before resolving the preset", async () => {
+      await expect(
+        client.applyPreset("Java Library with Maven", "relative/app", {}),
+      ).rejects.toThrow(/absolute path/);
+      expect(mocks.calls).toHaveLength(0);
+    });
   });
 
   describe("createProject", () => {
@@ -718,6 +746,11 @@ describe("Seed4jClient", () => {
       await client.createProject(target, {}, true);
 
       expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
+    });
+
+    it("rejects an unsafe project folder before creating directories", async () => {
+      await expect(client.createProject("relative/app", {})).rejects.toThrow(/absolute path/);
+      expect(mocks.calls).toHaveLength(0);
     });
   });
 
@@ -792,6 +825,18 @@ describe("Seed4jClient", () => {
 
         const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
         expect(payload.action).toBe("not-applied");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("rejects an unsafe project folder before reading history", async () => {
+      const fx = removeFixture();
+      try {
+        const remover = fx.buildClient({});
+        await expect(remover.removeModule("maven-java", "relative/app", {})).rejects.toThrow(
+          /absolute path/,
+        );
       } finally {
         await fx.cleanup();
       }

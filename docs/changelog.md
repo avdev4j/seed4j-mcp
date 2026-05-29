@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #25 — Add path validation and mutation safety rails
+
+- **Shipped:** 2026-05-29
+- **User impact:** mutation tools now reject unsafe `projectFolder` values before local filesystem writes or seed4j POSTs. Empty paths, relative paths, and filesystem roots return structured client errors through the normal tool wrapper.
+- **Docs touched:** [tools.md](tools.md), [errors.md](errors.md), [ROADMAP.md](ROADMAP.md).
+
 ### #24 — Expose catalogue cache refresh as an MCP tool
 
 - **Shipped:** 2026-05-29

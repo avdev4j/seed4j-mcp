@@ -224,12 +224,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Calling `refresh_catalogue` clears all catalogue cache entries by default, supports targeted refresh for modules/landscape/presets, and returns a structured confirmation.
 - **Shipped:** 2026-05-29 — new `refresh_catalogue` tool clears all catalogue cache entries by default or one targeted cache group (`modules`, `landscape`, `presets`). The response reports the cleared endpoint paths. See [changelog.md](changelog.md#24--expose-catalogue-cache-refresh-as-an-mcp-tool).
 
-### 25. Add path validation and mutation safety rails
+### ✅ 25. Add path validation and mutation safety rails
 
 - **What:** Validate `projectFolder` for mutating tools: require an absolute path, reject empty paths and filesystem roots, and add clearer error payloads for unsafe paths.
 - **Why:** Tool descriptions ask for absolute paths, but schemas currently accept any string. Mutation tools should fail early before seed4j or local filesystem operations touch an unintended location.
 - **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts), [tests/client.test.ts](../tests/client.test.ts), [docs/tools.md](tools.md), [docs/errors.md](errors.md), [docs/changelog.md](changelog.md).
 - **Done when:** Mutating tools reject unsafe paths before filesystem writes or seed4j POSTs; read-only status/preview behavior is documented intentionally.
+- **Shipped:** 2026-05-29 — `create_project`, `apply_module`, `apply_modules`, `apply_preset`, and confirmed/preview `remove_module` now reject empty, relative, and filesystem-root project folders before local writes or seed4j POSTs. See [changelog.md](changelog.md#25--add-path-validation-and-mutation-safety-rails).
 
 ### 26. Rework or document `create_project` failure behavior
 
