@@ -4,6 +4,69 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #27 — Add a remove-module prompt
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `seed4j-remove-module` MCP prompt guides callers through safe module removal: status check, preview, surfacing locally-modified files, explicit confirmation, optional force only on explicit user request, and final status check.
+- **Prompt count:** 2 → **3**.
+- **Docs touched:** [prompts.md](prompts.md), [tools.md](tools.md), [ROADMAP.md](ROADMAP.md).
+
+### #26 — Rework `create_project` failure behavior
+
+- **Shipped:** 2026-05-29
+- **User impact:** failed `create_project` calls now have predictable cleanup. If the MCP server created the target folder and seed4j's `init` fails before writing anything, the empty folder is removed. Pre-existing folders and folders containing partial seed4j output are left in place for inspection/recovery.
+- **Docs touched:** [tools.md](tools.md), [errors.md](errors.md), [ROADMAP.md](ROADMAP.md).
+
+### #25 — Add path validation and mutation safety rails
+
+- **Shipped:** 2026-05-29
+- **User impact:** mutation tools now reject unsafe `projectFolder` values before local filesystem writes or seed4j POSTs. Empty paths, relative paths, and filesystem roots return structured client errors through the normal tool wrapper.
+- **Docs touched:** [tools.md](tools.md), [errors.md](errors.md), [ROADMAP.md](ROADMAP.md).
+
+### #24 — Expose catalogue cache refresh as an MCP tool
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `refresh_catalogue` tool clears the in-process catalogue cache during a session. It clears modules, landscape, and presets by default, or one targeted cache group when requested.
+- **Tool count:** 16 → **17**.
+- **Docs touched:** [tools.md](tools.md), [configuration.md](configuration.md), [ROADMAP.md](ROADMAP.md).
+
+### #23 — Add a stack planning tool
+
+- **Shipped:** 2026-05-29
+- **User impact:** new `plan_stack` tool provides a read-only planning checkpoint from a natural-language stack description. It returns matching presets, matching modules, dependency order, feature choices, required/defaulted property hints, warnings, and next-step guidance before any project mutation.
+- **Tool count:** 15 → **16**.
+- **Docs touched:** [tools.md](tools.md), [ROADMAP.md](ROADMAP.md).
+
+### #22 — Make runtime MCP descriptions provider-neutral
+
+- **Shipped:** 2026-05-29
+- **User impact:** MCP clients now see provider-neutral tool, resource, and prompt descriptions. Runtime strings refer to callers, assistants, agents, or host workflows instead of assuming a single generic "agent".
+- **Docs touched:** [ROADMAP.md](ROADMAP.md).
+
+### #21 — Run full quality gates before publishing
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. Tagged and manual releases now run lint, format check, typecheck, build, and tests before publishing to npm, so a release cannot bypass PR-quality gates.
+- **Docs touched:** [develop.md](develop.md), [ROADMAP.md](ROADMAP.md).
+
+### #20 — Run CI against every supported Node major
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. CI now checks Node 20, 22, and 24, matching the package's advertised Node 20+ support and catching accidental newer-Node-only changes.
+- **Docs touched:** [develop.md](develop.md), [ROADMAP.md](ROADMAP.md).
+
+### #19 — Make integration tests fail fast when local sockets are unavailable
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. Test runs in restricted environments now fail integration setup immediately when binding `127.0.0.1` is blocked, instead of spending ~10 seconds per integration test and then throwing secondary cleanup errors.
+- **Docs touched:** [develop.md](develop.md), [ROADMAP.md](ROADMAP.md).
+
+### #18 — Fix `remove_module` replay correctness for non-last modules
+
+- **Shipped:** 2026-05-29
+- **User impact:** `remove_module` now compares the final generated project state with the target module against the final generated project state without it. Removing a module from the middle of the history no longer misclassifies files that later modules also touched. The preview's `modulesReplayed` field now reports the total scratch apply calls across both replays.
+- **Docs touched:** [tools.md](tools.md), [ROADMAP.md](ROADMAP.md).
+
 ### Documentation onboarding rework
 
 - **Shipped:** 2026-05-29

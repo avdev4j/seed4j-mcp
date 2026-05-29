@@ -16,7 +16,7 @@ export function buildResources(client: Seed4jClient): ResourceDefinition[] {
       name: "modules-catalogue",
       uri: "seed4j://catalogue/modules",
       description:
-        "Full seed4j module catalogue, grouped by category. JSON body returned by /api/modules. Use this resource for free browsing or attaching the catalogue once; the list_modules tool stays the right choice when the agent needs it inline. Backed by the catalogue cache (default 1 h TTL).",
+        "Full seed4j module catalogue, grouped by category. JSON body returned by /api/modules. Use this resource for free browsing or attaching the catalogue once; the list_modules tool stays the right choice when the caller needs it inline. Backed by the catalogue cache (default 1 h TTL).",
       mimeType: "application/json",
       handler: () => client.listModules(),
     },

@@ -31,9 +31,9 @@ function assertOrder(text: string, fragments: string[]): void {
 }
 
 describe("MCP prompt registry", () => {
-  it("exposes the two documented prompts", () => {
+  it("exposes the documented prompts", () => {
     const names = buildPrompts().map((p) => p.name);
-    expect(names).toEqual(["seed4j-curated-stack", "seed4j-custom-stack"]);
+    expect(names).toEqual(["seed4j-curated-stack", "seed4j-custom-stack", "seed4j-remove-module"]);
   });
 
   it("each prompt declares a non-empty description", () => {
@@ -42,13 +42,28 @@ describe("MCP prompt registry", () => {
     }
   });
 
-  it("each prompt declares stackDescription (required) and projectFolder (optional)", () => {
+  it("uses provider-neutral descriptions", () => {
     for (const prompt of buildPrompts()) {
+      expect(prompt.description).not.toContain("the agent");
+      expect(prompt.argsSchema.projectFolder.description).not.toContain("the agent");
+    }
+  });
+
+  it("stack prompts declare stackDescription (required) and projectFolder (optional)", () => {
+    for (const prompt of [findPrompt("seed4j-curated-stack"), findPrompt("seed4j-custom-stack")]) {
       expect(prompt.argsSchema.stackDescription.safeParse("ok").success).toBe(true);
       expect(prompt.argsSchema.stackDescription.safeParse("").success).toBe(false);
       expect(prompt.argsSchema.projectFolder.safeParse(undefined).success).toBe(true);
       expect(prompt.argsSchema.projectFolder.safeParse("/tmp/x").success).toBe(true);
     }
+  });
+
+  it("remove prompt declares moduleSlug (required) and projectFolder (optional)", () => {
+    const prompt = findPrompt("seed4j-remove-module");
+    expect(prompt.argsSchema.moduleSlug.safeParse("maven-java").success).toBe(true);
+    expect(prompt.argsSchema.moduleSlug.safeParse("").success).toBe(false);
+    expect(prompt.argsSchema.projectFolder.safeParse(undefined).success).toBe(true);
+    expect(prompt.argsSchema.projectFolder.safeParse("/tmp/x").success).toBe(true);
   });
 });
 
@@ -112,5 +127,33 @@ describe("seed4j-custom-stack handler", () => {
     const prompt = findPrompt("seed4j-custom-stack");
     const text = textOf(prompt, { stackDescription: "anything" });
     expect(text).toContain("not yet decided");
+  });
+});
+
+describe("seed4j-remove-module handler", () => {
+  it("interpolates the module slug and folder, and lists the safe removal flow in order", () => {
+    const prompt = findPrompt("seed4j-remove-module");
+    const text = textOf(prompt, {
+      moduleSlug: "maven-java",
+      projectFolder: "/tmp/svc",
+    });
+    expect(text).toContain('"maven-java"');
+    expect(text).toContain("/tmp/svc");
+    assertOrder(text, [
+      "get_project_status",
+      "remove_module",
+      "confirm: false",
+      "locallyModifiedFiles",
+      "confirm: true",
+      "get_project_status",
+    ]);
+    expect(text).toContain("force: true");
+  });
+
+  it("asks the user for a folder when none is supplied", () => {
+    const prompt = findPrompt("seed4j-remove-module");
+    const text = textOf(prompt, { moduleSlug: "maven-java" });
+    expect(text).toContain("not yet decided");
+    expect(text.toLowerCase()).toContain("ask the user");
   });
 });

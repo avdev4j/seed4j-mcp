@@ -18,6 +18,8 @@ function createClientMock(): ClientMock {
     listPresets: vi.fn(),
     getPresetDetails: vi.fn(),
     searchModules: vi.fn(),
+    planStack: vi.fn(),
+    refreshCatalogueCache: vi.fn(),
     getProjectStatus: vi.fn(),
     applyModule: vi.fn(),
     createProject: vi.fn(),
@@ -76,6 +78,8 @@ describe("MCP tool registry", () => {
       "list_presets",
       "get_preset_details",
       "search_modules",
+      "plan_stack",
+      "refresh_catalogue",
       "get_project_status",
       "apply_module",
       "create_project",
@@ -90,6 +94,7 @@ describe("MCP tool registry", () => {
   it("each tool has a non-empty description", () => {
     for (const tool of buildTools(client)) {
       expect(tool.description.length).toBeGreaterThan(0);
+      expect(tool.description).not.toContain("the agent");
     }
   });
 
@@ -144,6 +149,30 @@ describe("MCP tool registry", () => {
     mock.searchModules.mockResolvedValue("{}");
     await invoke(client, "search_modules", { query: "maven", limit: 5 });
     expect(mock.searchModules).toHaveBeenCalledWith("maven", 5);
+  });
+
+  it("plan_stack delegates with the default limit", async () => {
+    mock.planStack.mockResolvedValue("{}");
+    await invoke(client, "plan_stack", { stackDescription: "Maven Java" });
+    expect(mock.planStack).toHaveBeenCalledWith("Maven Java", 5);
+  });
+
+  it("plan_stack forwards an explicit limit", async () => {
+    mock.planStack.mockResolvedValue("{}");
+    await invoke(client, "plan_stack", { stackDescription: "Maven Java", limit: 2 });
+    expect(mock.planStack).toHaveBeenCalledWith("Maven Java", 2);
+  });
+
+  it("refresh_catalogue defaults to all cache groups", async () => {
+    mock.refreshCatalogueCache.mockReturnValue('{"refreshed":"all"}');
+    await invoke(client, "refresh_catalogue");
+    expect(mock.refreshCatalogueCache).toHaveBeenCalledWith("all");
+  });
+
+  it("refresh_catalogue forwards a targeted cache group", async () => {
+    mock.refreshCatalogueCache.mockReturnValue('{"refreshed":"modules"}');
+    await invoke(client, "refresh_catalogue", { target: "modules" });
+    expect(mock.refreshCatalogueCache).toHaveBeenCalledWith("modules");
   });
 
   it("get_project_status passes the folder", async () => {

@@ -170,6 +170,47 @@ describe("Seed4jClient", () => {
     });
   });
 
+  describe("refreshCatalogueCache", () => {
+    it("clears all catalogue cache entries by default", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      mocks.jsonOk('{"presets":[]}');
+      mocks.jsonOk('{"levels":[]}');
+      await client.listModules();
+      await client.listPresets();
+      await client.getModulesLandscape();
+
+      const result = JSON.parse(client.refreshCatalogueCache());
+      expect(result).toEqual({
+        refreshed: "all",
+        clearedPaths: ["/api/modules", "/api/modules-landscape", "/api/presets"],
+      });
+
+      mocks.jsonOk('{"categories":["fresh"]}');
+      await client.listModules();
+      expect(mocks.calls.filter((call) => call.url.endsWith("/api/modules"))).toHaveLength(2);
+    });
+
+    it("clears only the targeted cache group", async () => {
+      mocks.jsonOk('{"categories":[]}');
+      mocks.jsonOk('{"presets":[]}');
+      await client.listModules();
+      await client.listPresets();
+
+      const result = JSON.parse(client.refreshCatalogueCache("modules"));
+      expect(result).toEqual({
+        refreshed: "modules",
+        clearedPaths: ["/api/modules"],
+      });
+
+      mocks.jsonOk('{"categories":["fresh"]}');
+      await client.listModules();
+      await client.listPresets();
+
+      expect(mocks.calls.filter((call) => call.url.endsWith("/api/modules"))).toHaveLength(2);
+      expect(mocks.calls.filter((call) => call.url.endsWith("/api/presets"))).toHaveLength(1);
+    });
+  });
+
   describe("getPresetDetails", () => {
     it("matches by name case-insensitively", async () => {
       mocks.jsonOk(
@@ -196,6 +237,89 @@ describe("Seed4jClient", () => {
 
     it("rejects a blank preset name", async () => {
       await expect(client.getPresetDetails("  ")).rejects.toThrow();
+      expect(mocks.calls).toHaveLength(0);
+    });
+  });
+
+  describe("planStack", () => {
+    it("returns matching preset and module candidates with dependency and property hints", async () => {
+      mocks.jsonOk(
+        JSON.stringify({
+          presets: [
+            {
+              name: "Java Library with Maven",
+              modules: [{ slug: "init" }, { slug: "maven-java" }],
+            },
+            { name: "Webapp", modules: [{ slug: "init" }] },
+          ],
+        }),
+      );
+      mocks.jsonOk(
+        JSON.stringify({
+          categories: [
+            {
+              name: "Build",
+              modules: [
+                {
+                  slug: "maven-java",
+                  description: "Maven build for Java",
+                  tags: ["build", "java"],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      mocks.jsonOk(
+        JSON.stringify({
+          levels: [
+            {
+              elements: [
+                { type: "MODULE", slug: "init", operation: "INIT", dependencies: [] },
+                {
+                  type: "MODULE",
+                  slug: "maven-java",
+                  operation: "ADD",
+                  dependencies: [{ type: "MODULE", slug: "init" }],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      mocks.jsonOk(
+        JSON.stringify({
+          definitions: [
+            { key: "packageName", mandatory: true, type: "STRING" },
+            { key: "javaVersion", mandatory: true, type: "STRING", default: "21" },
+          ],
+        }),
+      );
+
+      const result = JSON.parse(await client.planStack("Java Maven", 3));
+
+      expect(result.query).toBe("Java Maven");
+      expect(result.presetCandidates[0]).toMatchObject({
+        name: "Java Library with Maven",
+      });
+      expect(result.moduleCandidates[0]).toMatchObject({
+        slug: "maven-java",
+        applicationOrder: ["init"],
+        featureChoices: {},
+        requiredProperties: [{ key: "packageName", type: "STRING", mandatory: true }],
+        defaultedProperties: [
+          { key: "javaVersion", type: "STRING", mandatory: true, default: "21" },
+        ],
+      });
+      expect(result.nextSteps).toContain("Call preview_module before any apply tool.");
+    });
+
+    it("returns a warning for a blank stack description without fetching", async () => {
+      const result = JSON.parse(await client.planStack("  "));
+
+      expect(result.warnings).toEqual(["stackDescription is blank"]);
+      expect(result.presetCandidates).toEqual([]);
+      expect(result.moduleCandidates).toEqual([]);
       expect(mocks.calls).toHaveLength(0);
     });
   });
@@ -464,6 +588,20 @@ describe("Seed4jClient", () => {
       await client.applyModule("maven-java", "/tmp/app", {}, true);
       expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
     });
+
+    it("rejects a relative project folder before posting", async () => {
+      await expect(client.applyModule("maven-java", "relative/app", {})).rejects.toThrow(
+        /absolute path/,
+      );
+      expect(mocks.calls).toHaveLength(0);
+    });
+
+    it("rejects the filesystem root before posting", async () => {
+      await expect(
+        client.applyModule("maven-java", path.parse(process.cwd()).root, {}),
+      ).rejects.toThrow(/filesystem root/);
+      expect(mocks.calls).toHaveLength(0);
+    });
   });
 
   describe("applyModules", () => {
@@ -505,6 +643,13 @@ describe("Seed4jClient", () => {
 
     it("rejects an empty step list", async () => {
       await expect(client.applyModules("/tmp/app", [])).rejects.toThrow();
+    });
+
+    it("rejects an unsafe project folder before applying any step", async () => {
+      await expect(
+        client.applyModules("relative/app", [{ slug: "init", properties: {} }]),
+      ).rejects.toThrow(/absolute path/);
+      expect(mocks.calls).toHaveLength(0);
     });
 
     it("forwards commit: true to every step's POST body", async () => {
@@ -571,6 +716,13 @@ describe("Seed4jClient", () => {
       expect(JSON.parse(mocks.calls[1]?.body ?? "{}").commit).toBe(true);
       expect(JSON.parse(mocks.calls[2]?.body ?? "{}").commit).toBe(true);
     });
+
+    it("rejects an unsafe project folder before resolving the preset", async () => {
+      await expect(
+        client.applyPreset("Java Library with Maven", "relative/app", {}),
+      ).rejects.toThrow(/absolute path/);
+      expect(mocks.calls).toHaveLength(0);
+    });
   });
 
   describe("createProject", () => {
@@ -594,6 +746,31 @@ describe("Seed4jClient", () => {
       await client.createProject(target, {}, true);
 
       expect(JSON.parse(mocks.calls[0]?.body ?? "{}").commit).toBe(true);
+    });
+
+    it("rejects an unsafe project folder before creating directories", async () => {
+      await expect(client.createProject("relative/app", {})).rejects.toThrow(/absolute path/);
+      expect(mocks.calls).toHaveLength(0);
+    });
+
+    it("removes a folder it created when init fails before writing files", async () => {
+      const base = await mkdtemp(path.join(tmpdir(), "seed4j-mcp-"));
+      const target = path.join(base, "proj");
+      mocks.badRequest("missing property");
+
+      await expect(client.createProject(target, {})).rejects.toBeInstanceOf(HttpError);
+      await expect(access(target)).rejects.toThrow();
+    });
+
+    it("keeps a pre-existing folder when init fails", async () => {
+      const base = await mkdtemp(path.join(tmpdir(), "seed4j-mcp-"));
+      const target = path.join(base, "proj");
+      await mkdir(target);
+      mocks.badRequest("missing property");
+
+      await expect(client.createProject(target, {})).rejects.toBeInstanceOf(HttpError);
+      const info = await stat(target);
+      expect(info.isDirectory()).toBe(true);
     });
   });
 
@@ -668,6 +845,18 @@ describe("Seed4jClient", () => {
 
         const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
         expect(payload.action).toBe("not-applied");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("rejects an unsafe project folder before reading history", async () => {
+      const fx = removeFixture();
+      try {
+        const remover = fx.buildClient({});
+        await expect(remover.removeModule("maven-java", "relative/app", {})).rejects.toThrow(
+          /absolute path/,
+        );
       } finally {
         await fx.cleanup();
       }
@@ -770,6 +959,38 @@ describe("Seed4jClient", () => {
             revertedSizeBytes: "node_modules\n".length,
           },
         ]);
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("preview compares final generated states when a later module rewrites the target file", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantHistory(projectFolder, [
+          { module: "init" },
+          { module: "maven-java" },
+          { module: "spring-boot" },
+        ]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<spring/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+          "spring-boot": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<spring/>");
+          },
+        });
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("preview");
+        expect(payload.modulesReplayed).toBe(5);
+        expect(payload.filesToDelete).toEqual([]);
+        expect(payload.filesToRevert).toEqual([]);
+        expect(payload.locallyModifiedFiles).toEqual([]);
       } finally {
         await fx.cleanup();
       }

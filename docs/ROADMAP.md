@@ -166,6 +166,90 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 
 ---
 
+## Follow-up hardening
+
+### ✅ 18. Fix `remove_module` replay correctness for non-last modules
+
+- **What:** Rework `remove_module` so the "with target" scratch replay uses the full project history, while the "without target" scratch replay uses the full history minus the removed action. Today the with-target side only replays up to the target action, which can misclassify files when later modules modify the same paths.
+- **Why:** Removing a module from the middle of the history should compare the current generated end-state with and without that module, not an intermediate historical state. This makes previews and confirmed removals safer and less surprising.
+- **Where:** [src/client.ts](../src/client.ts) `removeModule`, [tests/client.test.ts](../tests/client.test.ts), [docs/tools.md](tools.md), [docs/changelog.md](changelog.md).
+- **Done when:** Unit tests cover removing a module followed by a later module that touches the same file; preview and confirm classify only the target module's net contribution against the final generated state.
+- **Shipped:** 2026-05-29 — `remove_module` now replays full history on the with-target side and full history minus the target on the without-target side. This fixes mid-history removals where later modules rewrite the same file. `modulesReplayed` now reports the total scratch apply calls across both replays. See [changelog.md](changelog.md#18--fix-remove_module-replay-correctness-for-non-last-modules).
+
+### ✅ 19. Make integration tests fail fast when local sockets are unavailable
+
+- **What:** Update the mock HTTP server test helper so `server.listen` rejects immediately on `error`, and guard cleanup when setup fails.
+- **Why:** In restricted environments, binding `127.0.0.1` can fail with `EPERM`. The suite should fail clearly in one place instead of timing out every integration test and producing secondary cleanup errors.
+- **Where:** [tests/integration/server.ts](../tests/integration/server.ts), [tests/integration/seed4j.test.ts](../tests/integration/seed4j.test.ts), [docs/develop.md](develop.md), [docs/changelog.md](changelog.md).
+- **Done when:** A listen failure surfaces as a single clear setup error; `afterEach` does not throw when setup failed; normal integration tests still pass where sockets are allowed.
+- **Shipped:** 2026-05-29 — the integration mock server now rejects its startup promise on `listen` errors and cleanup skips close when setup did not finish. Restricted sandboxes surface the underlying `EPERM` immediately instead of per-test hook timeouts. See [changelog.md](changelog.md#19--make-integration-tests-fail-fast-when-local-sockets-are-unavailable).
+
+### ✅ 20. Run CI against every supported Node major
+
+- **What:** Replace the single Node 24 CI run with a matrix covering Node 20, 22, and 24.
+- **Why:** `package.json` advertises Node 20+, so CI must catch accidental use of APIs that only work on newer Node versions.
+- **Where:** [.github/workflows/ci.yml](../.github/workflows/ci.yml), [docs/develop.md](develop.md), [docs/changelog.md](changelog.md).
+- **Done when:** CI runs lint, format, typecheck, build, and tests for Node 20, 22, and 24.
+- **Shipped:** 2026-05-29 — CI now uses a Node 20/22/24 matrix with the same lint, format, typecheck, build, and test gates on each supported major. See [changelog.md](changelog.md#20--run-ci-against-every-supported-node-major).
+
+### ✅ 21. Run full quality gates before publishing
+
+- **What:** Update the release workflow to run the same gates as CI before `npm publish`: lint, format check, typecheck, build, and test.
+- **Why:** A tagged release should not publish code that would fail PR checks.
+- **Where:** [.github/workflows/release.yml](../.github/workflows/release.yml), [docs/develop.md](develop.md), [docs/changelog.md](changelog.md).
+- **Done when:** The release job fails before publish if lint, format, typecheck, build, or test fails.
+- **Shipped:** 2026-05-29 — release now runs lint, format check, typecheck, build, and tests as separate gates before `npm publish`. See [changelog.md](changelog.md#21--run-full-quality-gates-before-publishing).
+
+### ✅ 22. Make runtime MCP descriptions provider-neutral
+
+- **What:** Update tool/resource/prompt descriptions and prompt text that still says "the agent" when it really means any MCP client, assistant, agent, or host workflow.
+- **Why:** MCP clients display these descriptions directly. The runtime surface should be as provider-neutral as the human documentation.
+- **Where:** [src/tools.ts](../src/tools.ts), [src/resources.ts](../src/resources.ts), [src/prompts.ts](../src/prompts.ts), [tests/prompts.test.ts](../tests/prompts.test.ts), [docs/changelog.md](changelog.md).
+- **Done when:** Runtime descriptions no longer imply Claude or a single agent type unless the specific context requires it; prompt tests still pass.
+- **Shipped:** 2026-05-29 — runtime tool, resource, prompt, and prompt-argument descriptions now use provider-neutral caller wording. Tests guard against reintroducing "the agent" in exposed descriptions. See [changelog.md](changelog.md#22--make-runtime-mcp-descriptions-provider-neutral).
+
+### ✅ 23. Add a stack planning tool
+
+- **What:** Add a read-only `plan_stack` tool that takes a natural-language stack description and returns candidate presets/modules, dependency order, required feature choices, and validation hints without mutating disk.
+- **Why:** Today MCP callers must compose discovery, dependency lookup, and validation themselves. A planning tool gives users a clearer "here is the proposed stack" step before preview/apply.
+- **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts), [tests/client.test.ts](../tests/client.test.ts), [tests/tools.test.ts](../tests/tools.test.ts), [docs/tools.md](tools.md), [docs/changelog.md](changelog.md).
+- **Done when:** `plan_stack` returns a structured plan with no project mutation, uses cached catalogue data, and is covered by unit tests.
+- **Shipped:** 2026-05-29 — new `plan_stack` tool scores matching presets and modules from a natural-language stack description, then enriches module candidates with dependency order, feature choices, required/defaulted property hints, warnings, and next-step guidance. See [changelog.md](changelog.md#23--add-a-stack-planning-tool).
+
+### ✅ 24. Expose catalogue cache refresh as an MCP tool
+
+- **What:** Add a `refresh_catalogue` tool that clears the in-process catalogue cache, optionally for one cacheable endpoint.
+- **Why:** The client has `clearCache`, but MCP callers cannot use it. This matters when seed4j modules or presets change during a long session.
+- **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts), [tests/tools.test.ts](../tests/tools.test.ts), [docs/tools.md](tools.md), [docs/configuration.md](configuration.md), [docs/changelog.md](changelog.md).
+- **Done when:** Calling `refresh_catalogue` clears all catalogue cache entries by default, supports targeted refresh for modules/landscape/presets, and returns a structured confirmation.
+- **Shipped:** 2026-05-29 — new `refresh_catalogue` tool clears all catalogue cache entries by default or one targeted cache group (`modules`, `landscape`, `presets`). The response reports the cleared endpoint paths. See [changelog.md](changelog.md#24--expose-catalogue-cache-refresh-as-an-mcp-tool).
+
+### ✅ 25. Add path validation and mutation safety rails
+
+- **What:** Validate `projectFolder` for mutating tools: require an absolute path, reject empty paths and filesystem roots, and add clearer error payloads for unsafe paths.
+- **Why:** Tool descriptions ask for absolute paths, but schemas currently accept any string. Mutation tools should fail early before seed4j or local filesystem operations touch an unintended location.
+- **Where:** [src/client.ts](../src/client.ts), [src/tools.ts](../src/tools.ts), [tests/client.test.ts](../tests/client.test.ts), [docs/tools.md](tools.md), [docs/errors.md](errors.md), [docs/changelog.md](changelog.md).
+- **Done when:** Mutating tools reject unsafe paths before filesystem writes or seed4j POSTs; read-only status/preview behavior is documented intentionally.
+- **Shipped:** 2026-05-29 — `create_project`, `apply_module`, `apply_modules`, `apply_preset`, and confirmed/preview `remove_module` now reject empty, relative, and filesystem-root project folders before local writes or seed4j POSTs. See [changelog.md](changelog.md#25--add-path-validation-and-mutation-safety-rails).
+
+### ✅ 26. Rework or document `create_project` failure behavior
+
+- **What:** Decide and implement the safest behavior when `create_project` creates a folder but the `init` module fails: either clean up folders created by the MCP server when still empty, or explicitly return/document the partial-folder behavior.
+- **Why:** A failed project creation should leave users with a predictable recovery path.
+- **Where:** [src/client.ts](../src/client.ts), [tests/client.test.ts](../tests/client.test.ts), [docs/tools.md](tools.md), [docs/errors.md](errors.md), [docs/changelog.md](changelog.md).
+- **Done when:** Tests cover failed `init` after folder creation, and docs describe exactly what remains on disk and how callers should recover.
+- **Shipped:** 2026-05-29 — `create_project` removes a newly-created target folder if `init` fails before anything is written. Pre-existing folders and folders containing partial seed4j output remain for inspection/recovery. See [changelog.md](changelog.md#26--rework-create_project-failure-behavior).
+
+### ✅ 27. Add a remove-module prompt
+
+- **What:** Register a `seed4j-remove-module` prompt that guides callers through `get_project_status → remove_module` preview → user confirmation → confirmed `remove_module` → `get_project_status`.
+- **Why:** Removal can be destructive, especially with `force: true`. A prompt gives clients a safe named workflow.
+- **Where:** [src/prompts.ts](../src/prompts.ts), [tests/prompts.test.ts](../tests/prompts.test.ts), [docs/prompts.md](prompts.md), [docs/tools.md](tools.md), [docs/changelog.md](changelog.md).
+- **Done when:** `prompts/list` exposes `seed4j-remove-module`; the prompt text requires surfacing preview results and locally modified files before confirmation.
+- **Shipped:** 2026-05-29 — new `seed4j-remove-module` prompt guides callers through status check, preview, surfacing `locallyModifiedFiles`, explicit confirmation, force only on explicit user request, and final status verification. See [changelog.md](changelog.md#27--add-a-remove-module-prompt).
+
+---
+
 ## Notes
 
 - **Stack:** Node 20+ / TypeScript (ESM) using `@modelcontextprotocol/sdk` over STDIO + `zod` + native `fetch`. (Anything referring to a "Spring AI" implementation is stale — this is the TypeScript server.)

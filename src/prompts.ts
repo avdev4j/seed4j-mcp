@@ -15,14 +15,16 @@ interface PromptArgs {
   projectFolder?: string;
 }
 
+interface RemoveModulePromptArgs {
+  moduleSlug: string;
+  projectFolder?: string;
+}
+
 export interface PromptDefinition {
   name: string;
   description: string;
-  argsSchema: {
-    stackDescription: z.ZodString;
-    projectFolder: z.ZodOptional<z.ZodString>;
-  };
-  handler: (args: PromptArgs) => PromptResult;
+  argsSchema: Record<string, z.ZodTypeAny>;
+  handler: (args: Record<string, unknown>) => PromptResult;
 }
 
 const sharedArgsSchema = {
@@ -34,8 +36,16 @@ const sharedArgsSchema = {
     .string()
     .optional()
     .describe(
-      "Absolute path to the project folder. Leave empty if the user hasn't decided yet — the agent will ask.",
+      "Absolute path to the project folder. Leave empty if the user hasn't decided yet — the caller will ask.",
     ),
+};
+
+const removeModuleArgsSchema = {
+  moduleSlug: z.string().min(1).describe("Slug of the applied module to remove."),
+  projectFolder: z
+    .string()
+    .optional()
+    .describe("Absolute path to the project folder. Leave empty if the user hasn't decided yet."),
 };
 
 export function buildPrompts(): PromptDefinition[] {
@@ -43,13 +53,13 @@ export function buildPrompts(): PromptDefinition[] {
     {
       name: "seed4j-curated-stack",
       description:
-        "Scaffold a seed4j project using one of the curated presets. Encodes the list_presets → get_preset_details → preview_module → apply_preset flow so the agent picks the right preset and shows the user a plan before mutating disk.",
+        "Scaffold a seed4j project using one of the curated presets. Encodes the list_presets → get_preset_details → preview_module → apply_preset flow so the calling assistant, agent, or host workflow picks the right preset and shows the user a plan before mutating disk.",
       argsSchema: sharedArgsSchema,
       handler: (args) => ({
         messages: [
           {
             role: "user",
-            content: { type: "text", text: buildCuratedStackText(args) },
+            content: { type: "text", text: buildCuratedStackText(args as unknown as PromptArgs) },
           },
         ],
       }),
@@ -57,18 +67,58 @@ export function buildPrompts(): PromptDefinition[] {
     {
       name: "seed4j-custom-stack",
       description:
-        "Scaffold a seed4j project from individual modules (no preset). Encodes the search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules flow so the agent assembles a coherent stack and stops to ask the user when feature choices need disambiguation.",
+        "Scaffold a seed4j project from individual modules (no preset). Encodes the search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules flow so the calling assistant, agent, or host workflow assembles a coherent stack and stops to ask the user when feature choices need disambiguation.",
       argsSchema: sharedArgsSchema,
       handler: (args) => ({
         messages: [
           {
             role: "user",
-            content: { type: "text", text: buildCustomStackText(args) },
+            content: { type: "text", text: buildCustomStackText(args as unknown as PromptArgs) },
+          },
+        ],
+      }),
+    },
+    {
+      name: "seed4j-remove-module",
+      description:
+        "Safely remove a previously-applied seed4j module. Encodes the get_project_status → remove_module preview → user confirmation → confirmed remove_module → get_project_status flow, with explicit handling for locally-modified files.",
+      argsSchema: removeModuleArgsSchema,
+      handler: (args) => ({
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: buildRemoveModuleText(args as unknown as RemoveModulePromptArgs),
+            },
           },
         ],
       }),
     },
   ];
+}
+
+function buildRemoveModuleText(args: RemoveModulePromptArgs): string {
+  const folderLine = args.projectFolder
+    ? `Target project folder: ${args.projectFolder}`
+    : "Target project folder: (not yet decided — ask the user before calling remove_module)";
+  return [
+    "You are helping the user remove a previously-applied seed4j module safely.",
+    "",
+    `Module to remove: "${args.moduleSlug}"`,
+    folderLine,
+    "",
+    "Follow this flow exactly:",
+    "",
+    "1. If the project folder is known, call `get_project_status` to confirm the module history. If it is not known, ask the user for an absolute project folder first.",
+    "2. Call `remove_module` with `confirm: false` and `force: false` to get a preview. Do not skip this step.",
+    "3. Surface `filesToDelete`, `filesToRevert`, `locallyModifiedFiles`, and `historyUpdate` to the user.",
+    "4. Ask the user to confirm before any mutation. If `locallyModifiedFiles` is non-empty, explain that they are skipped by default.",
+    "5. Only after explicit confirmation, call `remove_module` with `confirm: true`. Set `force: true` only if the user explicitly asks to delete or revert locally-modified files.",
+    "6. Confirm the final state with `get_project_status` and surface the updated module list.",
+    "",
+    "If any unexpected error occurs, run `ping_seed4j` first to rule out connectivity, then surface the error to the user.",
+  ].join("\n");
 }
 
 function buildCuratedStackText(args: PromptArgs): string {

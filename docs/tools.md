@@ -38,6 +38,24 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 - **Output:** `{ query, matches: [{ slug, description, tags, category, score }] }` — case-insensitive substring scoring across slug (×3), description (×2), tags and category (×1), sorted by score desc.
 - **When to use:** narrow the catalogue before `get_module_details` / `get_module_dependencies`.
 
+### `plan_stack`
+
+- **Input:** `stackDescription: string`, `limit?: number` (default 5, capped at 10).
+- **Behaviour:** read-only planning helper. Scores preset names/module slugs and module catalogue matches from a natural-language description, then enriches module candidates with dependency order, `featureChoices`, required properties, and defaulted properties.
+- **Output:** `{ query, presetCandidates, moduleCandidates, warnings, nextSteps }`.
+  - `presetCandidates`: matching presets with `{ name, modules, score }`.
+  - `moduleCandidates`: matching modules with `{ slug, description, tags, category, score, applicationOrder, featureChoices, requiredProperties, defaultedProperties }`.
+  - `warnings`: empty unless the query is blank or no candidates match.
+  - `nextSteps`: suggested follow-up calls for the MCP caller.
+- **When to use:** before `validate_properties`, `preview_module`, or any apply tool when the user asks for a stack recommendation and the caller needs a concrete proposal without mutating disk.
+
+### `refresh_catalogue`
+
+- **Input:** `target?: "all" | "modules" | "landscape" | "presets"` (default `"all"`).
+- **Behaviour:** clears the in-process catalogue cache for `/api/modules`, `/api/modules-landscape`, and/or `/api/presets`. Does not call seed4j immediately; the next tool/resource read fetches fresh data.
+- **Output:** `{ refreshed, clearedPaths }`.
+- **When to use:** after changing modules or presets in a running seed4j instance, or when the caller suspects cached catalogue data is stale. Normal sessions usually do not need this because the cache has a TTL.
+
 ### `get_module_details`
 
 - **Input:** `moduleSlug: string`.
@@ -110,10 +128,12 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
 
 ## Project mutation (writes)
 
+Mutation tools reject unsafe `projectFolder` values before writing locally or calling seed4j: the path must be non-empty, absolute, and below the filesystem root. Read-only status and preview tools still accept the path shape documented on their individual inputs.
+
 ### `create_project`
 
 - **Input:** `projectFolder: string`, `properties: Record<string, unknown>`, `commit?: boolean` (default `false`).
-- **Behaviour:** `mkdir -p` the folder, then `apply_module("init", folder, properties, commit)`.
+- **Behaviour:** `mkdir -p` the folder, then `apply_module("init", folder, properties, commit)`. If the MCP server created the folder and `init` fails before anything is written, the empty folder is removed. If the folder already existed, or seed4j wrote partial files before failing, the folder is left in place for inspection/recovery.
 - **Output:** the seed4j apply-patch response for `init`.
 
 ### `apply_module`
@@ -141,7 +161,7 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
 ### `remove_module`
 
 - **Input:** `moduleSlug: string`, `projectFolder: string`, `confirm?: boolean` (default `false`), `force?: boolean` (default `false`).
-- **Behaviour:** removes a previously-applied module by reading the project's [`.seed4j/modules/history.json`](seed4j-api.md#seed4jmoduleshistoryjson), replaying the history twice into scratch dirs — with the target and without — using each action's **own** properties, and diffing both against the current project folder. Classifies each touched file as **clean** (current bytes match the install snapshot) or **locally-modified** (current bytes differ — typically business code the user added on top of the scaffold). With `confirm: true`, deletes clean added files, reverts clean modified files to their pre-install content, skips locally-modified files (unless `force: true`), and writes `.seed4j/modules/history.json` back atomically with the targeted action removed. Cost: ~2 × N apply-patch calls, where N is the number of applied modules. `.git/` and `.seed4j/` are excluded from the diff on every side.
+- **Behaviour:** removes a previously-applied module by reading the project's [`.seed4j/modules/history.json`](seed4j-api.md#seed4jmoduleshistoryjson), replaying the full history twice into scratch dirs — final state with the target and final state without — using each action's **own** properties, and diffing both against the current project folder. Classifies each touched file as **clean** (current bytes match the generated final state with the target) or **locally-modified** (current bytes differ — typically business code the user added on top of the scaffold). With `confirm: true`, deletes clean added files, reverts clean modified files to their generated final state without the target, skips locally-modified files (unless `force: true`), and writes `.seed4j/modules/history.json` back atomically with the targeted action removed. Cost: up to `2 × N - 1` apply-patch calls, where N is the number of applied modules. `.git/` and `.seed4j/` are excluded from the diff on every side.
 - **Output (preview, default):**
   ```json
   {
@@ -149,7 +169,7 @@ Set `commit: true` when scaffolding a project end-to-end and the caller wants a 
     "projectFolder": "/Users/.../app",
     "action": "preview",
     "actionIndex": 1,
-    "modulesReplayed": 1,
+    "modulesReplayed": 3,
     "filesToDelete": [{ "path": "pom.xml", "sizeBytes": 1800 }],
     "filesToRevert": [{ "path": ".gitignore", "currentSizeBytes": 200, "revertedSizeBytes": 100 }],
     "locallyModifiedFiles": [
@@ -190,7 +210,7 @@ The module catalogue, landscape, and preset list are **also** exposed as MCP res
 
 ## MCP prompts
 
-The two documented seed4j flows (curated stack, custom stack) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the calling assistant, agent, or host workflow does not have to infer it.
+The documented seed4j flows (curated stack, custom stack, and remove-module) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the calling assistant, agent, or host workflow does not have to infer it.
 
 ## Not yet exposed
 
