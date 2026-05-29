@@ -64,6 +64,8 @@ The integration helper binds `127.0.0.1` on an ephemeral port. In restricted san
 
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every push to `main` and every pull request across Node 20, 22, and 24. Each matrix leg runs, in this order: `npm ci → lint → format:check → typecheck → build → test`. A PR with any failure is blocked.
 
+The release workflow uses the same local gates before publishing to npm: `npm ci → lint → format:check → typecheck → build → test → npm publish`.
+
 ## Project layout
 
 See [overview.md](overview.md) for the four-layer architecture (entrypoint → server → tools → client). Adding a new tool is a two-step process documented in the project [CLAUDE.md](../CLAUDE.md).

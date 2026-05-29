@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #21 — Run full quality gates before publishing
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. Tagged and manual releases now run lint, format check, typecheck, build, and tests before publishing to npm, so a release cannot bypass PR-quality gates.
+- **Docs touched:** [develop.md](develop.md), [ROADMAP.md](ROADMAP.md).
+
 ### #20 — Run CI against every supported Node major
 
 - **Shipped:** 2026-05-29

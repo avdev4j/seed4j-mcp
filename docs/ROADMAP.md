@@ -192,12 +192,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** CI runs lint, format, typecheck, build, and tests for Node 20, 22, and 24.
 - **Shipped:** 2026-05-29 — CI now uses a Node 20/22/24 matrix with the same lint, format, typecheck, build, and test gates on each supported major. See [changelog.md](changelog.md#20--run-ci-against-every-supported-node-major).
 
-### 21. Run full quality gates before publishing
+### ✅ 21. Run full quality gates before publishing
 
 - **What:** Update the release workflow to run the same gates as CI before `npm publish`: lint, format check, typecheck, build, and test.
 - **Why:** A tagged release should not publish code that would fail PR checks.
 - **Where:** [.github/workflows/release.yml](../.github/workflows/release.yml), [docs/develop.md](develop.md), [docs/changelog.md](changelog.md).
 - **Done when:** The release job fails before publish if lint, format, typecheck, build, or test fails.
+- **Shipped:** 2026-05-29 — release now runs lint, format check, typecheck, build, and tests as separate gates before `npm publish`. See [changelog.md](changelog.md#21--run-full-quality-gates-before-publishing).
 
 ### 22. Make runtime MCP descriptions provider-neutral
 
