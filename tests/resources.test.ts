@@ -98,8 +98,8 @@ describe("MCP resources share the catalogue cache with the tools", () => {
   });
 
   it("a tool call and a resource read share the same cache entry", async () => {
-    const fetcher: FetchLike = vi.fn(async () =>
-      new Response('{"categories":[]}', { status: 200 }),
+    const fetcher: FetchLike = vi.fn(
+      async () => new Response('{"categories":[]}', { status: 200 }),
     );
     const cached = new Seed4jClient("http://test", fetcher, {
       cacheTtlMs: 60_000,

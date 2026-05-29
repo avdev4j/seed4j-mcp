@@ -1,8 +1,5 @@
 {
-  "modules": [
-    { "slug": "init" },
-    { "slug": "maven-java" }
-  ],
+  "modules": [{ "slug": "init" }, { "slug": "maven-java" }],
   "properties": {
     "projectName": "My App",
     "baseName": "myapp",

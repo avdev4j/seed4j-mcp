@@ -21,6 +21,19 @@ npm run build && npm start          # compile to dist/ and run the built entrypo
 npm run typecheck                   # tsc --noEmit
 ```
 
+## Lint & format
+
+ESLint (with `typescript-eslint`) and Prettier are wired up. Both are gated in CI.
+
+```bash
+npm run lint                        # ESLint: fail on any error
+npm run lint:fix                    # ESLint with --fix
+npm run format                      # Prettier: write all files
+npm run format:check                # Prettier: fail on any unformatted file
+```
+
+Config lives in [`eslint.config.js`](../eslint.config.js) (flat config), [`.prettierrc.json`](../.prettierrc.json), and [`.prettierignore`](../.prettierignore). Prettier owns whitespace; ESLint focuses on semantics. `eslint-config-prettier` is the bridge — no rule conflicts.
+
 Override `SEED4J_BASE_URL` to point at a non-default seed4j instance:
 
 ```bash
@@ -44,6 +57,10 @@ Two test layers under [tests/](../tests/):
 - **Integration tests** live in [tests/integration/](../tests/integration/). Each suite boots a real [`node:http`](https://nodejs.org/api/http.html) server on an ephemeral port via [`tests/integration/server.ts`](../tests/integration/server.ts), and exercises `Seed4jClient` with the **global `fetch`** — so URL construction, JSON body framing, the `Authorization` header on the wire, retry against real sockets, and `AbortController`-driven timeouts all run end-to-end. Fixtures used by integration tests live in [tests/fixtures/](../tests/fixtures/) — small, hand-trimmed JSON payloads that match seed4j's shapes.
 
 Both layers run under `npm test`. No separate command needed.
+
+## CI gates
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every push to `main` and every pull request, in this order: `npm ci → lint → format:check → typecheck → build → test`. A PR with any failure is blocked.
 
 ## Project layout
 

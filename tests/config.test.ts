@@ -91,9 +91,7 @@ describe("loadConfig", () => {
   });
 
   it("ignores blank auth values", () => {
-    const config = loadConfig(
-      env({ SEED4J_AUTH_HEADER: "   ", SEED4J_BEARER_TOKEN: "   " }),
-    );
+    const config = loadConfig(env({ SEED4J_AUTH_HEADER: "   ", SEED4J_BEARER_TOKEN: "   " }));
     expect(config.clientOptions.authHeader).toBeUndefined();
   });
 

@@ -28,6 +28,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
     "verify:api": "tsx scripts/verify-seed4j-api.ts"
   },
   "dependencies": {
@@ -36,8 +40,12 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "prettier": "^3.8.3",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.60.0",
     "vitest": "^2.1.0"
   },
   "engines": {

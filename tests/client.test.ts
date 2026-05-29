@@ -1,12 +1,4 @@
-import {
-  access,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -56,8 +48,7 @@ function mockFetcher() {
         }),
     );
 
-  const badRequest = (body: string) =>
-    enqueue(() => new Response(body, { status: 400 }));
+  const badRequest = (body: string) => enqueue(() => new Response(body, { status: 400 }));
 
   const assertDrained = () => {
     expect(queue.length, "queued responses left unconsumed").toBe(0);
@@ -134,7 +125,11 @@ describe("Seed4jClient", () => {
             {
               name: "Persistence",
               modules: [
-                { slug: "jpa-postgresql", description: "JPA + PostgreSQL", tags: ["database", "sql"] },
+                {
+                  slug: "jpa-postgresql",
+                  description: "JPA + PostgreSQL",
+                  tags: ["database", "sql"],
+                },
               ],
             },
           ],
@@ -180,7 +175,10 @@ describe("Seed4jClient", () => {
       mocks.jsonOk(
         JSON.stringify({
           presets: [
-            { name: "Java Library with Maven", modules: [{ slug: "init" }, { slug: "maven-java" }] },
+            {
+              name: "Java Library with Maven",
+              modules: [{ slug: "init" }, { slug: "maven-java" }],
+            },
             { name: "Webapp", modules: [{ slug: "init" }] },
           ],
         }),
@@ -279,9 +277,7 @@ describe("Seed4jClient", () => {
         }),
       );
 
-      const result = JSON.parse(
-        await client.validateProperties("init", { buildTool: "MAVEN" }),
-      );
+      const result = JSON.parse(await client.validateProperties("init", { buildTool: "MAVEN" }));
       expect(result.valid).toBe(true);
     });
 
@@ -294,9 +290,7 @@ describe("Seed4jClient", () => {
         }),
       );
 
-      const result = JSON.parse(
-        await client.validateProperties("init", { buildTool: "sbt" }),
-      );
+      const result = JSON.parse(await client.validateProperties("init", { buildTool: "sbt" }));
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].key).toBe("buildTool");
@@ -312,9 +306,7 @@ describe("Seed4jClient", () => {
         }),
       );
 
-      const okResult = JSON.parse(
-        await client.validateProperties("init", { language: "fr" }),
-      );
+      const okResult = JSON.parse(await client.validateProperties("init", { language: "fr" }));
       expect(okResult.valid).toBe(true);
     });
 
@@ -536,7 +528,10 @@ describe("Seed4jClient", () => {
       mocks.jsonOk(
         JSON.stringify({
           presets: [
-            { name: "Java Library with Maven", modules: [{ slug: "init" }, { slug: "maven-java" }] },
+            {
+              name: "Java Library with Maven",
+              modules: [{ slug: "init" }, { slug: "maven-java" }],
+            },
           ],
         }),
       );
@@ -561,7 +556,10 @@ describe("Seed4jClient", () => {
       mocks.jsonOk(
         JSON.stringify({
           presets: [
-            { name: "Java Library with Maven", modules: [{ slug: "init" }, { slug: "maven-java" }] },
+            {
+              name: "Java Library with Maven",
+              modules: [{ slug: "init" }, { slug: "maven-java" }],
+            },
           ],
         }),
       );
@@ -648,9 +646,7 @@ describe("Seed4jClient", () => {
           await writeFile(path.join(scratchDir, "src/main/java/Foo.java"), "// new");
         });
 
-        const payload = JSON.parse(
-          await previewer.previewModule("maven-java", projectFolder, {}),
-        );
+        const payload = JSON.parse(await previewer.previewModule("maven-java", projectFolder, {}));
         expect(payload.mode).toBe("copy");
         expect(payload.projectFolder).toBe(projectFolder);
         expect(payload.changedFilesCount).toBe(2);
@@ -687,9 +683,7 @@ describe("Seed4jClient", () => {
         expect(payload.mode).toBe("empty");
         expect(payload.projectFolder).toBe(missing);
         expect(payload.changedFilesCount).toBe(2);
-        const paths = (payload.changes as Array<{ path: string; kind: string }>).map(
-          (c) => c.path,
-        );
+        const paths = (payload.changes as Array<{ path: string; kind: string }>).map((c) => c.path);
         expect(paths).toEqual([".gitignore", "README.md"]);
         for (const change of payload.changes as Array<{ kind: string }>) {
           expect(change.kind).toBe("added");
@@ -709,9 +703,7 @@ describe("Seed4jClient", () => {
           await rm(path.join(scratchDir, "old.txt"));
         });
 
-        const payload = JSON.parse(
-          await previewer.previewModule("delete-mod", projectFolder, {}),
-        );
+        const payload = JSON.parse(await previewer.previewModule("delete-mod", projectFolder, {}));
         expect(payload.changes).toEqual([
           {
             path: "old.txt",
@@ -738,9 +730,7 @@ describe("Seed4jClient", () => {
           await writeFile(path.join(scratchDir, "real.txt"), "hello");
         });
 
-        const payload = JSON.parse(
-          await previewer.previewModule("mod", projectFolder, {}),
-        );
+        const payload = JSON.parse(await previewer.previewModule("mod", projectFolder, {}));
         const paths = (payload.changes as Array<{ path: string }>).map((c) => c.path);
         expect(paths).toEqual(["real.txt"]);
       } finally {
@@ -755,9 +745,7 @@ describe("Seed4jClient", () => {
         await writeFile(path.join(projectFolder, "stable.txt"), "unchanged");
 
         const previewer = fx.buildClient(async () => undefined);
-        const payload = JSON.parse(
-          await previewer.previewModule("noop", projectFolder, {}),
-        );
+        const payload = JSON.parse(await previewer.previewModule("noop", projectFolder, {}));
         expect(payload.changedFilesCount).toBe(0);
         expect(payload.changes).toEqual([]);
       } finally {
@@ -779,9 +767,9 @@ describe("Seed4jClient", () => {
         });
         const failing = new Seed4jClient(BASE_URL, fetcher, { retries: 0 });
 
-        await expect(
-          failing.previewModule("mod", projectFolder, {}),
-        ).rejects.toBeInstanceOf(HttpError);
+        await expect(failing.previewModule("mod", projectFolder, {})).rejects.toBeInstanceOf(
+          HttpError,
+        );
 
         for (const scratch of beforeScratch) {
           await expect(access(scratch)).rejects.toThrow();
@@ -808,9 +796,7 @@ describe("Seed4jClient", () => {
 
         const original = await readFile(path.join(projectFolder, "pom.xml"), "utf8");
         expect(original).toBe("<original/>");
-        await expect(
-          access(path.join(projectFolder, "extra.txt")),
-        ).rejects.toThrow();
+        await expect(access(path.join(projectFolder, "extra.txt"))).rejects.toThrow();
       } finally {
         await fx.cleanup();
       }
@@ -902,9 +888,9 @@ describe("Seed4jClient", () => {
         sleep,
       });
 
-      await expect(
-        retrying.applyModule("maven-java", "/tmp/app", {}),
-      ).rejects.toBeInstanceOf(HttpError);
+      await expect(retrying.applyModule("maven-java", "/tmp/app", {})).rejects.toBeInstanceOf(
+        HttpError,
+      );
       expect(fetcher).toHaveBeenCalledTimes(1);
       expect(sleep).not.toHaveBeenCalled();
     });
@@ -922,9 +908,7 @@ describe("Seed4jClient", () => {
         sleep,
       });
 
-      await expect(retrying.getProjectStatus("/tmp/app")).resolves.toBe(
-        '{"appliedModules":[]}',
-      );
+      await expect(retrying.getProjectStatus("/tmp/app")).resolves.toBe('{"appliedModules":[]}');
       expect(fetcher).toHaveBeenCalledTimes(2);
     });
 
@@ -972,10 +956,10 @@ describe("Seed4jClient", () => {
       const local = arrange({
         liveness: () => new Response('{"categories":[]}', { status: 200 }),
         version: () =>
-          new Response(
-            JSON.stringify({ build: { version: "1.2.3" } }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          ),
+          new Response(JSON.stringify({ build: { version: "1.2.3" } }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
       });
 
       const payload = JSON.parse(await local.client.ping());
@@ -1178,10 +1162,7 @@ describe("Seed4jClient", () => {
   });
 
   describe("catalogue cache", () => {
-    function cachingClient(opts: {
-      ttl: number;
-      now: () => number;
-    }) {
+    function cachingClient(opts: { ttl: number; now: () => number }) {
       const local = mockFetcher();
       const cached = new Seed4jClient(BASE_URL, local.fetcher, {
         cacheTtlMs: opts.ttl,
@@ -1235,7 +1216,10 @@ describe("Seed4jClient", () => {
       local.jsonOk(
         JSON.stringify({
           presets: [
-            { name: "Java Library with Maven", modules: [{ slug: "init" }, { slug: "maven-java" }] },
+            {
+              name: "Java Library with Maven",
+              modules: [{ slug: "init" }, { slug: "maven-java" }],
+            },
           ],
         }),
       );
@@ -1334,7 +1318,6 @@ describe("Seed4jClient", () => {
     });
 
     it("does not cache failed responses", async () => {
-      const local = cachingClient({ ttl: 60_000, now: () => 1_000 });
       const sleep = vi.fn().mockResolvedValue(undefined);
       const responses = [
         new Response("boom", { status: 503 }),

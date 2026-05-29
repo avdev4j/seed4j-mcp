@@ -99,12 +99,8 @@ async function verifyModules(baseUrl: string, auth: string | undefined): Promise
       if (mod) {
         ok = assertType(notes, "categories[0].modules[0].slug", mod.slug, "string") && ok;
         ok =
-          assertType(
-            notes,
-            "categories[0].modules[0].description",
-            mod.description,
-            "string",
-          ) && ok;
+          assertType(notes, "categories[0].modules[0].description", mod.description, "string") &&
+          ok;
         ok = assertType(notes, "categories[0].modules[0].tags", mod.tags, "array") && ok;
       }
     }
@@ -232,10 +228,7 @@ async function verifyProjects(baseUrl: string, auth: string | undefined): Promis
   record("GET /api/projects", ok, notes);
 }
 
-async function verifyManagementInfo(
-  baseUrl: string,
-  auth: string | undefined,
-): Promise<void> {
+async function verifyManagementInfo(baseUrl: string, auth: string | undefined): Promise<void> {
   const notes: string[] = [];
   const response = await tryFetch(baseUrl, "/management/info", auth);
   if (!response) {
@@ -306,9 +299,7 @@ async function main(): Promise<void> {
     if (!result.ok) failed += 1;
   }
 
-  process.stdout.write(
-    `\n${results.length - failed}/${results.length} endpoints passed.\n`,
-  );
+  process.stdout.write(`\n${results.length - failed}/${results.length} endpoints passed.\n`);
   process.exit(failed > 0 ? 1 : 0);
 }
 

@@ -19,11 +19,15 @@ const ERROR_BODY_MAX_CHARS = 500;
 
 const propertiesSchema = z
   .record(z.string(), z.unknown())
-  .describe("Module-specific properties as a JSON object, e.g. {\"packageName\":\"com.example.app\",\"baseName\":\"myapp\"}.");
+  .describe(
+    'Module-specific properties as a JSON object, e.g. {"packageName":"com.example.app","baseName":"myapp"}.',
+  );
 
 const optionalPropertiesSchema = propertiesSchema
   .optional()
-  .describe("Module-specific properties as a JSON object. Omit when the module has no required properties.");
+  .describe(
+    "Module-specific properties as a JSON object. Omit when the module has no required properties.",
+  );
 
 const commitSchema = z
   .boolean()
@@ -109,7 +113,9 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
           .number()
           .int()
           .optional()
-          .describe("Maximum number of matches to return. Defaults to 20 if omitted or non-positive."),
+          .describe(
+            "Maximum number of matches to return. Defaults to 20 if omitted or non-positive.",
+          ),
       },
       handler: async ({ query, limit }) => text(await client.searchModules(query, limit ?? 0)),
     },
@@ -135,7 +141,9 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
         commit: commitSchema,
       },
       handler: async ({ moduleSlug, projectFolder, properties, commit }) =>
-        text(await client.applyModule(moduleSlug, projectFolder, properties ?? {}, commit ?? false)),
+        text(
+          await client.applyModule(moduleSlug, projectFolder, properties ?? {}, commit ?? false),
+        ),
     },
     {
       name: "create_project",
@@ -148,7 +156,7 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
             "Absolute path where the project will be created. The folder will be created if it does not exist.",
           ),
         properties: propertiesSchema.describe(
-          "Base project properties as a JSON object, e.g. {\"projectName\":\"My App\",\"baseName\":\"myapp\",\"nodePackageManager\":\"npm\"}.",
+          'Base project properties as a JSON object, e.g. {"projectName":"My App","baseName":"myapp","nodePackageManager":"npm"}.',
         ),
         commit: commitSchema,
       },
@@ -180,7 +188,7 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
           .string()
           .describe("Slug identifier of the seed4j module whose schema will be checked."),
         properties: propertiesSchema.describe(
-          "Properties to validate as a JSON object, e.g. {\"packageName\":\"com.example.app\"}.",
+          'Properties to validate as a JSON object, e.g. {"packageName":"com.example.app"}.',
         ),
       },
       handler: async ({ moduleSlug, properties }) =>
@@ -205,7 +213,7 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
             }),
           )
           .describe(
-            "Ordered steps, e.g. [{\"slug\":\"maven-java\",\"properties\":{}},{\"slug\":\"java-base\",\"properties\":{\"packageName\":\"com.example.app\"}}].",
+            'Ordered steps, e.g. [{"slug":"maven-java","properties":{}},{"slug":"java-base","properties":{"packageName":"com.example.app"}}].',
           ),
         commit: commitSchema,
       },
@@ -224,7 +232,7 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
           .string()
           .describe("Absolute path to the existing project folder to mutate."),
         properties: propertiesSchema.describe(
-          "Shared properties for every module in the preset, e.g. {\"projectName\":\"My App\",\"baseName\":\"myapp\",\"packageName\":\"com.example.app\"}.",
+          'Shared properties for every module in the preset, e.g. {"projectName":"My App","baseName":"myapp","packageName":"com.example.app"}.',
         ),
         commit: commitSchema,
       },

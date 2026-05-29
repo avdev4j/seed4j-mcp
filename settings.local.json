@@ -38,8 +38,6 @@
       "Bash(curl -sS http://localhost:1339/api/presets)",
       "mcp__seed4j__get_module_dependencies"
     ],
-    "additionalDirectories": [
-      "/tmp"
-    ]
+    "additionalDirectories": ["/tmp"]
   }
 }

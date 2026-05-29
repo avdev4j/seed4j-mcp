@@ -15,16 +15,16 @@ MCP clients render `isError: true` results gracefully (typically as an inline er
 
 ### Payload shape
 
-| Field | Always present? | Notes |
-| --- | --- | --- |
-| `error` | yes | `"http"` \| `"timeout"` \| `"client"` \| `"unknown"` — the error kind. |
-| `tool` | yes | The MCP tool name that produced the error, e.g. `"list_modules"`. |
-| `message` | yes | One-line human-readable summary. |
-| `status` | http only | The HTTP status code returned by seed4j. |
-| `endpoint` | http + timeout | The absolute URL (and method, for timeouts) that was hit. |
-| `bodyExcerpt` | http only | The first 500 chars of the seed4j response body; longer bodies get a `… (N more chars)` suffix. |
-| `timeoutMs` | timeout only | The configured timeout that fired. |
-| `hint` | when actionable | A short next-step suggestion (e.g. *"check the tool inputs"*, *"increase SEED4J_TIMEOUT_MS"*). |
+| Field         | Always present? | Notes                                                                                           |
+| ------------- | --------------- | ----------------------------------------------------------------------------------------------- |
+| `error`       | yes             | `"http"` \| `"timeout"` \| `"client"` \| `"unknown"` — the error kind.                          |
+| `tool`        | yes             | The MCP tool name that produced the error, e.g. `"list_modules"`.                               |
+| `message`     | yes             | One-line human-readable summary.                                                                |
+| `status`      | http only       | The HTTP status code returned by seed4j.                                                        |
+| `endpoint`    | http + timeout  | The absolute URL (and method, for timeouts) that was hit.                                       |
+| `bodyExcerpt` | http only       | The first 500 chars of the seed4j response body; longer bodies get a `… (N more chars)` suffix. |
+| `timeoutMs`   | timeout only    | The configured timeout that fired.                                                              |
+| `hint`        | when actionable | A short next-step suggestion (e.g. _"check the tool inputs"_, _"increase SEED4J_TIMEOUT_MS"_).  |
 
 ### Per-kind examples
 
@@ -103,13 +103,13 @@ Thrown when the `AbortController` armed for `timeoutMs` (default 30 s, override 
 
 Some client methods throw plain `Error`s before any HTTP call. After wrapping these surface as `error: "client"`:
 
-| Method | Throws when |
-| --- | --- |
-| `getPresetDetails` | preset name is blank or no preset matches. |
-| `applyModules` | the step list is empty. |
-| `applyPreset` | the preset resolves to zero modules. |
-| `getModuleDependencies` | the slug is not found in the landscape. |
-| `validateProperties` | (does not throw — returns `{ valid: false, errors }`). |
+| Method                  | Throws when                                            |
+| ----------------------- | ------------------------------------------------------ |
+| `getPresetDetails`      | preset name is blank or no preset matches.             |
+| `applyModules`          | the step list is empty.                                |
+| `applyPreset`           | the preset resolves to zero modules.                   |
+| `getModuleDependencies` | the slug is not found in the landscape.                |
+| `validateProperties`    | (does not throw — returns `{ valid: false, errors }`). |
 
 ## Retries on transient GET failures
 

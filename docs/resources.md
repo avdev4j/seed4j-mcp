@@ -2,24 +2,24 @@
 
 MCP defines a separate primitive — **resources** — for read-only, addressable data that the client can list, attach, or render without burning a tool call. This server registers three resources alongside the [tools](tools.md):
 
-| URI | Name | Backed by | MIME type |
-| --- | --- | --- | --- |
-| `seed4j://catalogue/modules` | `modules-catalogue` | `Seed4jClient.listModules` → `/api/modules` | `application/json` |
+| URI                            | Name                | Backed by                                                     | MIME type          |
+| ------------------------------ | ------------------- | ------------------------------------------------------------- | ------------------ |
+| `seed4j://catalogue/modules`   | `modules-catalogue` | `Seed4jClient.listModules` → `/api/modules`                   | `application/json` |
 | `seed4j://catalogue/landscape` | `modules-landscape` | `Seed4jClient.getModulesLandscape` → `/api/modules-landscape` | `application/json` |
-| `seed4j://catalogue/presets` | `presets-catalogue` | `Seed4jClient.listPresets` → `/api/presets` | `application/json` |
+| `seed4j://catalogue/presets`   | `presets-catalogue` | `Seed4jClient.listPresets` → `/api/presets`                   | `application/json` |
 
 All three return the JSON body seed4j produces, verbatim — wrapped in the standard MCP `{ contents: [{ uri, mimeType, text }] }` envelope.
 
 ## When to use a resource vs. a tool
 
-| Scenario | Use |
-| --- | --- |
-| Agent needs the catalogue *now* to make a decision in the current turn | `list_modules` tool |
-| Client wants to render the catalogue in a sidebar / picker / file tree | `seed4j://catalogue/modules` resource |
-| Agent needs the dependency-ranked landscape for one specific module | `get_module_dependencies` tool |
-| Client wants to browse / attach the whole landscape once | `seed4j://catalogue/landscape` resource |
-| Agent needs the preset list inline to commit to one | `list_presets` / `get_preset_details` tools |
-| Client wants to surface the preset catalogue for human browsing | `seed4j://catalogue/presets` resource |
+| Scenario                                                               | Use                                         |
+| ---------------------------------------------------------------------- | ------------------------------------------- |
+| Agent needs the catalogue _now_ to make a decision in the current turn | `list_modules` tool                         |
+| Client wants to render the catalogue in a sidebar / picker / file tree | `seed4j://catalogue/modules` resource       |
+| Agent needs the dependency-ranked landscape for one specific module    | `get_module_dependencies` tool              |
+| Client wants to browse / attach the whole landscape once               | `seed4j://catalogue/landscape` resource     |
+| Agent needs the preset list inline to commit to one                    | `list_presets` / `get_preset_details` tools |
+| Client wants to surface the preset catalogue for human browsing        | `seed4j://catalogue/presets` resource       |
 
 Resources can be attached to a conversation **once** instead of being re-fetched on every turn — useful for keeping large static data out of tool-call round-trips.
 

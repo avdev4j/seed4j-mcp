@@ -8,7 +8,10 @@ function findPrompt(name: string): PromptDefinition {
   return prompt;
 }
 
-function textOf(prompt: PromptDefinition, args: { stackDescription: string; projectFolder?: string }) {
+function textOf(
+  prompt: PromptDefinition,
+  args: { stackDescription: string; projectFolder?: string },
+) {
   const result = prompt.handler(args);
   expect(result.messages).toHaveLength(1);
   expect(result.messages[0]?.role).toBe("user");

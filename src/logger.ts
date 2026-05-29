@@ -34,16 +34,12 @@ export function createLogger(
     stream = createWriteStream(target, { flags: "a" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(
-      `seed4j-mcp: could not open log file ${target}: ${message}\n`,
-    );
+    process.stderr.write(`seed4j-mcp: could not open log file ${target}: ${message}\n`);
     return NOOP_LOGGER;
   }
 
   stream.on("error", (error) => {
-    process.stderr.write(
-      `seed4j-mcp: log file ${target} write error: ${error.message}\n`,
-    );
+    process.stderr.write(`seed4j-mcp: log file ${target} write error: ${error.message}\n`);
   });
 
   const now = options.now ?? Date.now;

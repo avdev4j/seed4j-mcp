@@ -10,31 +10,31 @@
 
 ## Layers
 
-| Layer | File | Responsibility |
-| --- | --- | --- |
-| Entry point | [src/index.ts](../src/index.ts) | Load config from env, emit warnings on stderr, build the client, wire the STDIO transport, connect the server. |
-| Config | [src/config.ts](../src/config.ts) | Pure env → `{ baseUrl, clientOptions, warnings }` parser. No I/O. |
-| Server | [src/server.ts](../src/server.ts) | Construct the `McpServer` and register tools + resources + prompts. |
-| Tools | [src/tools.ts](../src/tools.ts) | The MCP-facing tools surface — names, descriptions, zod schemas, handlers. |
-| Resources | [src/resources.ts](../src/resources.ts) | Read-only MCP resources for the catalogue (modules, landscape, presets). Re-uses the catalogue cache. |
-| Prompts | [src/prompts.ts](../src/prompts.ts) | MCP prompts encoding the curated-stack and custom-stack flows. Pure string templates — no HTTP. |
-| Version | [src/version.ts](../src/version.ts) | Reads `package.json` once at module load and exports `PACKAGE_VERSION`. Used by the server handshake; falls back to `0.0.0` on read failure (stderr warning, stdout untouched). |
-| Logger | [src/logger.ts](../src/logger.ts) | Opt-in JSONL file logger (`SEED4J_LOG_FILE`). No-op singleton when disabled. Used by the client to emit `http.*` and `cache.*` events. Never writes to stdout. |
-| Client | [src/client.ts](../src/client.ts) | HTTP calls into seed4j; the only layer that knows about `fetch`. |
+| Layer       | File                                    | Responsibility                                                                                                                                                                  |
+| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entry point | [src/index.ts](../src/index.ts)         | Load config from env, emit warnings on stderr, build the client, wire the STDIO transport, connect the server.                                                                  |
+| Config      | [src/config.ts](../src/config.ts)       | Pure env → `{ baseUrl, clientOptions, warnings }` parser. No I/O.                                                                                                               |
+| Server      | [src/server.ts](../src/server.ts)       | Construct the `McpServer` and register tools + resources + prompts.                                                                                                             |
+| Tools       | [src/tools.ts](../src/tools.ts)         | The MCP-facing tools surface — names, descriptions, zod schemas, handlers.                                                                                                      |
+| Resources   | [src/resources.ts](../src/resources.ts) | Read-only MCP resources for the catalogue (modules, landscape, presets). Re-uses the catalogue cache.                                                                           |
+| Prompts     | [src/prompts.ts](../src/prompts.ts)     | MCP prompts encoding the curated-stack and custom-stack flows. Pure string templates — no HTTP.                                                                                 |
+| Version     | [src/version.ts](../src/version.ts)     | Reads `package.json` once at module load and exports `PACKAGE_VERSION`. Used by the server handshake; falls back to `0.0.0` on read failure (stderr warning, stdout untouched). |
+| Logger      | [src/logger.ts](../src/logger.ts)       | Opt-in JSONL file logger (`SEED4J_LOG_FILE`). No-op singleton when disabled. Used by the client to emit `http.*` and `cache.*` events. Never writes to stdout.                  |
+| Client      | [src/client.ts](../src/client.ts)       | HTTP calls into seed4j; the only layer that knows about `fetch`.                                                                                                                |
 
 ## seed4j HTTP endpoints used
 
 These paths are inherited from the JHipster-Lite-style API. The full request / response contracts are pinned in [seed4j-api.md](seed4j-api.md) — last verified against the seed4j `main` branch on 2026-05-29. Re-run [`scripts/verify-seed4j-api.ts`](../scripts/verify-seed4j-api.ts) against a live seed4j to confirm after upgrades.
 
-| Method | Path | Used by |
-| --- | --- | --- |
-| GET | `/api/modules` | `list_modules`, `search_modules`, `ping_seed4j` (liveness probe), resource `seed4j://catalogue/modules` |
-| GET | `/api/modules/{slug}` | `get_module_details`, `validate_properties` |
-| POST | `/api/modules/{slug}/apply-patch` | `apply_module`, `apply_modules`, `apply_preset`, `create_project`, `preview_module` (against a scratch dir; never the user's project) |
-| GET | `/api/presets` | `list_presets`, `get_preset_details`, `apply_preset`, resource `seed4j://catalogue/presets` |
-| GET | `/api/projects?path=…` | `get_project_status` |
-| GET | `/api/modules-landscape` | `get_module_dependencies`, resource `seed4j://catalogue/landscape` |
-| GET | `/management/info` | `ping_seed4j` (version probe, best-effort) |
+| Method | Path                              | Used by                                                                                                                               |
+| ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/modules`                    | `list_modules`, `search_modules`, `ping_seed4j` (liveness probe), resource `seed4j://catalogue/modules`                               |
+| GET    | `/api/modules/{slug}`             | `get_module_details`, `validate_properties`                                                                                           |
+| POST   | `/api/modules/{slug}/apply-patch` | `apply_module`, `apply_modules`, `apply_preset`, `create_project`, `preview_module` (against a scratch dir; never the user's project) |
+| GET    | `/api/presets`                    | `list_presets`, `get_preset_details`, `apply_preset`, resource `seed4j://catalogue/presets`                                           |
+| GET    | `/api/projects?path=…`            | `get_project_status`                                                                                                                  |
+| GET    | `/api/modules-landscape`          | `get_module_dependencies`, resource `seed4j://catalogue/landscape`                                                                    |
+| GET    | `/management/info`                | `ping_seed4j` (version probe, best-effort)                                                                                            |
 
 `create_project` is **not** a dedicated endpoint: it `mkdir`s the target folder locally and then applies the `init` module via `apply-patch`.
 

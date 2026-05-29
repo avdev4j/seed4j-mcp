@@ -4,6 +4,14 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #16 — CI: typecheck + test on PRs, and lint
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. CI already ran `npm ci → typecheck → build → test` on every push to `main` and every PR; this item adds **lint** and **format check** as new gates before typecheck, so PRs with style violations fail fast. Locally: four new commands — `npm run lint`, `npm run lint:fix`, `npm run format`, `npm run format:check`.
+- **Stack:** ESLint v9 with `typescript-eslint` (flat config), Prettier v3, `eslint-config-prettier` as the bridge. Project-specific rules: `@typescript-eslint/no-unused-vars` errors with `_`-prefixed escape hatch, `@typescript-eslint/no-explicit-any` warns instead of errors (so existing intentional `as unknown as ...` casts survive review), `no-console` left off (stderr is fine).
+- **Source diffs:** Prettier reformatted 24 files (markdown tables widened, line breaks tightened) and ESLint flagged one dead variable in [tests/client.test.ts](../tests/client.test.ts). Folded into the same change so future PRs start green.
+- **Docs touched:** [develop.md](develop.md), [CLAUDE.md](../CLAUDE.md).
+
 ### #15 — Verify and document seed4j API stability
 
 - **Shipped:** 2026-05-29

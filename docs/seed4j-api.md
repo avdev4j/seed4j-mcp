@@ -26,17 +26,19 @@ The full module catalogue, grouped by category.
 {
   "categories": [
     {
-      "name": "string",          // category label (e.g. "Build")
+      "name": "string", // category label (e.g. "Build")
       "modules": [
         {
-          "slug": "string",      // unique module identifier (e.g. "maven-java")
+          "slug": "string", // unique module identifier (e.g. "maven-java")
           "description": "string",
-          "properties": { /* RestSeed4JModulePropertiesDefinition — see GET /api/modules/{slug} */ },
-          "tags": ["string"]
-        }
-      ]
-    }
-  ]
+          "properties": {
+            /* RestSeed4JModulePropertiesDefinition — see GET /api/modules/{slug} */
+          },
+          "tags": ["string"],
+        },
+      ],
+    },
+  ],
 }
 ```
 
@@ -91,9 +93,11 @@ Apply a single module to a project folder.
 
 ```jsonc
 {
-  "projectFolder": "string",     // required, absolute path
-  "commit": true,                // required, boolean (git commit after apply)
-  "parameters": { /* Map<String, Object> */ }
+  "projectFolder": "string", // required, absolute path
+  "commit": true, // required, boolean (git commit after apply)
+  "parameters": {
+    /* Map<String, Object> */
+  },
 }
 ```
 
@@ -114,12 +118,12 @@ The curated, pre-ordered preset catalogue.
 {
   "presets": [
     {
-      "name": "string",          // preset display name (e.g. "Java Library with Maven")
+      "name": "string", // preset display name (e.g. "Java Library with Maven")
       "modules": [
-        { "slug": "string" }     // ordered list of module slugs to apply
-      ]
-    }
-  ]
+        { "slug": "string" }, // ordered list of module slugs to apply
+      ],
+    },
+  ],
 }
 ```
 
@@ -179,9 +183,11 @@ The seed4j history of a project folder.
 ```jsonc
 {
   "modules": [
-    { "slug": "string" }         // applied modules, oldest first
+    { "slug": "string" }, // applied modules, oldest first
   ],
-  "properties": { /* Map<String, Object> — aggregated properties used during apply */ }
+  "properties": {
+    /* Map<String, Object> — aggregated properties used during apply */
+  },
 }
 ```
 
@@ -204,13 +210,13 @@ Spring Boot Actuator info endpoint. Used by `ping_seed4j` as a best-effort versi
 {
   "git": {
     "branch": "string",
-    "commit": { "id": "string", "time": "string" }
+    "commit": { "id": "string", "time": "string" },
   },
   "build": {
     "artifact": "string",
     "name": "string",
-    "version": "string"          // ping_seed4j extracts this (best-effort)
-  }
+    "version": "string", // ping_seed4j extracts this (best-effort)
+  },
 }
 ```
 
@@ -219,8 +225,8 @@ Spring Boot Actuator info endpoint. Used by `ping_seed4j` as a best-effort versi
 
 ## Endpoints we don't use
 
-| Endpoint | Why we don't use it |
-| --- | --- |
+| Endpoint                  | Why we don't use it                                                                                                                                                                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /api/apply-patches` | Bulk apply: takes a `RestSeed4JModulesToApply` body and applies several modules in one call. We sequence per-module calls via `apply_modules` so we can report mid-sequence failures and which slugs remain. Switching to bulk would lose that granularity. |
 
 ## Re-verifying the contract

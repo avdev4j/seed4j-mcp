@@ -16,28 +16,28 @@ When the var is unset (default), the logger is a frozen **no-op singleton** — 
 
 One JSON object per line (JSONL). Each entry carries:
 
-| Field | Always present? | Notes |
-| --- | --- | --- |
-| `timestamp` | yes | ISO 8601 (UTC). |
-| `level` | yes | `"debug"` \| `"info"` \| `"warn"`. |
-| `event` | yes | Machine-readable tag — see the table below. |
-| Per-event fields | event-specific | `method`, `path`, `status`, `latencyMs`, `attempt`, etc. |
+| Field            | Always present? | Notes                                                    |
+| ---------------- | --------------- | -------------------------------------------------------- |
+| `timestamp`      | yes             | ISO 8601 (UTC).                                          |
+| `level`          | yes             | `"debug"` \| `"info"` \| `"warn"`.                       |
+| `event`          | yes             | Machine-readable tag — see the table below.              |
+| Per-event fields | event-specific  | `method`, `path`, `status`, `latencyMs`, `attempt`, etc. |
 
 ## Events
 
-| Event | Level | Fired when | Fields |
-| --- | --- | --- | --- |
-| `http.request` | info | Every outbound HTTP call (GETs and the apply-patch POST). | `method`, `path` |
-| `http.response` | info / warn | Response received. `warn` when non-2xx. | `method`, `path`, `status`, `latencyMs` |
-| `http.timeout` | warn | The per-call `AbortController` fires before a response arrives. | `method`, `path`, `timeoutMs` |
-| `http.error` | warn | A non-timeout error escapes the fetch (network failure, etc.). | `method`, `path`, `error` |
-| `http.retry` | info | A retry is about to fire (after backoff). | `attempt`, `delayMs`, `lastError` |
-| `cache.hit` | debug | Catalogue cache served a body without a roundtrip. | `path` |
-| `cache.populate` | debug | A fresh fetch was stored in the catalogue cache. | `path` |
+| Event            | Level       | Fired when                                                      | Fields                                  |
+| ---------------- | ----------- | --------------------------------------------------------------- | --------------------------------------- |
+| `http.request`   | info        | Every outbound HTTP call (GETs and the apply-patch POST).       | `method`, `path`                        |
+| `http.response`  | info / warn | Response received. `warn` when non-2xx.                         | `method`, `path`, `status`, `latencyMs` |
+| `http.timeout`   | warn        | The per-call `AbortController` fires before a response arrives. | `method`, `path`, `timeoutMs`           |
+| `http.error`     | warn        | A non-timeout error escapes the fetch (network failure, etc.).  | `method`, `path`, `error`               |
+| `http.retry`     | info        | A retry is about to fire (after backoff).                       | `attempt`, `delayMs`, `lastError`       |
+| `cache.hit`      | debug       | Catalogue cache served a body without a roundtrip.              | `path`                                  |
+| `cache.populate` | debug       | A fresh fetch was stored in the catalogue cache.                | `path`                                  |
 
 The `path` field is **relative** — just `/api/modules`, not `${SEED4J_BASE_URL}/api/modules` — to keep lines short and base-URL secrets (rare, but possible) out of the file.
 
-## What is *not* logged
+## What is _not_ logged
 
 - **Authorization headers.** The logger never echoes request headers. The `Authorization` value set via `SEED4J_AUTH_HEADER` / `SEED4J_BEARER_TOKEN` is never written to disk.
 - **Request bodies.** Apply-patch POST bodies can contain user `properties` (potentially sensitive) and module slugs — we don't log them. The path identifies which module.

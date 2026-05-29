@@ -270,19 +270,12 @@ describe("MCP tool registry", () => {
       properties: {},
       commit: true,
     });
-    expect(mock.applyPreset).toHaveBeenCalledWith(
-      "Java Library with Maven",
-      "/tmp/app",
-      {},
-      true,
-    );
+    expect(mock.applyPreset).toHaveBeenCalledWith("Java Library with Maven", "/tmp/app", {}, true);
   });
 
   describe("structured tool errors", () => {
     it("wraps a 5xx HttpError into an isError payload with a server-side hint", async () => {
-      mock.listModules.mockRejectedValue(
-        new HttpError(503, "starting", "http://test/api/modules"),
-      );
+      mock.listModules.mockRejectedValue(new HttpError(503, "starting", "http://test/api/modules"));
       const payload = await invokeError(client, "list_modules");
 
       expect(payload.error).toBe("http");
@@ -309,9 +302,7 @@ describe("MCP tool registry", () => {
 
     it("truncates a very long HttpError body to ~500 chars with a remaining-count suffix", async () => {
       const huge = "x".repeat(2000);
-      mock.listModules.mockRejectedValue(
-        new HttpError(500, huge, "http://test/api/modules"),
-      );
+      mock.listModules.mockRejectedValue(new HttpError(500, huge, "http://test/api/modules"));
       const payload = await invokeError(client, "list_modules");
 
       const excerpt = String(payload.bodyExcerpt);
@@ -321,9 +312,7 @@ describe("MCP tool registry", () => {
     });
 
     it("wraps a TimeoutError with endpoint, timeoutMs, and a timeout-specific hint", async () => {
-      mock.listModules.mockRejectedValue(
-        new TimeoutError("http://test/api/modules", "GET", 30000),
-      );
+      mock.listModules.mockRejectedValue(new TimeoutError("http://test/api/modules", "GET", 30000));
       const payload = await invokeError(client, "list_modules");
 
       expect(payload.error).toBe("timeout");

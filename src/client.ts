@@ -249,7 +249,10 @@ export class Seed4jClient {
       presets?: Array<{ name?: string }>;
     };
     const match = (presetsBody.presets ?? []).find(
-      (preset) => String(preset?.name ?? "").trim().toLowerCase() === target,
+      (preset) =>
+        String(preset?.name ?? "")
+          .trim()
+          .toLowerCase() === target,
     );
     if (!match) {
       throw new Error(`Preset not found: ${presetName}`);
@@ -333,8 +336,7 @@ export class Seed4jClient {
     properties: Properties,
   ): Promise<string> {
     const mode: PreviewMode = (await directoryExists(projectFolder)) ? "copy" : "empty";
-    const before =
-      mode === "copy" ? await snapshotFiles(projectFolder) : new Map<string, Buffer>();
+    const before = mode === "copy" ? await snapshotFiles(projectFolder) : new Map<string, Buffer>();
     const scratchDir = await mkdtemp(path.join(tmpdir(), "seed4j-preview-"));
     try {
       if (mode === "copy") {
@@ -355,11 +357,7 @@ export class Seed4jClient {
     }
   }
 
-  async applyModules(
-    projectFolder: string,
-    steps: ApplyStep[],
-    commit = false,
-  ): Promise<string> {
+  async applyModules(projectFolder: string, steps: ApplyStep[], commit = false): Promise<string> {
     if (!steps || steps.length === 0) {
       throw new Error("At least one module step is required");
     }
@@ -462,7 +460,13 @@ export class Seed4jClient {
         const slug = module.slug ?? "";
         const description = module.description ?? "";
         const tags = Array.isArray(module.tags) ? module.tags : [];
-        const score = scoreModule(tokens, slug.toLowerCase(), description.toLowerCase(), tags, categoryLower);
+        const score = scoreModule(
+          tokens,
+          slug.toLowerCase(),
+          description.toLowerCase(),
+          tags,
+          categoryLower,
+        );
         if (score > 0) {
           matches.push({ slug, description, tags, category: categoryName, score });
         }
@@ -486,7 +490,14 @@ export class Seed4jClient {
 
     const applicationOrder = new Set<string>();
     const featureChoices: Record<string, string[]> = {};
-    collectDependencies(target, modulesBySlug, featureMembers, applicationOrder, featureChoices, new Set());
+    collectDependencies(
+      target,
+      modulesBySlug,
+      featureMembers,
+      applicationOrder,
+      featureChoices,
+      new Set(),
+    );
 
     return JSON.stringify({
       slug: moduleSlug,
@@ -655,10 +666,7 @@ async function walkInto(
   }
 }
 
-function diffSnapshots(
-  before: Map<string, Buffer>,
-  after: Map<string, Buffer>,
-): PreviewChange[] {
+function diffSnapshots(before: Map<string, Buffer>, after: Map<string, Buffer>): PreviewChange[] {
   const changes: PreviewChange[] = [];
   for (const [relPath, afterBytes] of after) {
     const beforeBytes = before.get(relPath);
@@ -689,9 +697,7 @@ function diffSnapshots(
   return changes;
 }
 
-async function extractVersion(
-  result: PromiseSettledResult<Response>,
-): Promise<string | null> {
+async function extractVersion(result: PromiseSettledResult<Response>): Promise<string | null> {
   if (result.status !== "fulfilled") return null;
   const response = result.value;
   if (!response.ok) return null;
@@ -926,4 +932,3 @@ function collectDependencies(
     }
   }
 }
-

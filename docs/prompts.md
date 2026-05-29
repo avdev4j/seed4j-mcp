@@ -4,19 +4,19 @@ MCP defines a third primitive — **prompts** — for parametrised prompt templa
 
 This server registers two prompts, one per documented seed4j flow:
 
-| Prompt name | Flow | Arguments |
-| --- | --- | --- |
-| `seed4j-curated-stack` | `list_presets → get_preset_details → preview_module → apply_preset` | `stackDescription` (required), `projectFolder` (optional) |
-| `seed4j-custom-stack` | `search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules` | `stackDescription` (required), `projectFolder` (optional) |
+| Prompt name            | Flow                                                                                              | Arguments                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `seed4j-curated-stack` | `list_presets → get_preset_details → preview_module → apply_preset`                               | `stackDescription` (required), `projectFolder` (optional) |
+| `seed4j-custom-stack`  | `search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules` | `stackDescription` (required), `projectFolder` (optional) |
 
 ## Arguments
 
 Both prompts accept the same two arguments:
 
-| Name | Required | Description |
-| --- | --- | --- |
-| `stackDescription` | yes | What the user wants to build, in their own words (e.g. `"Java library with Maven"`). |
-| `projectFolder` | no | Absolute path to the target project folder. Leave empty when the user hasn't decided yet — the prompt explicitly tells the agent to ask. |
+| Name               | Required | Description                                                                                                                              |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `stackDescription` | yes      | What the user wants to build, in their own words (e.g. `"Java library with Maven"`).                                                     |
+| `projectFolder`    | no       | Absolute path to the target project folder. Leave empty when the user hasn't decided yet — the prompt explicitly tells the agent to ask. |
 
 ## `seed4j-curated-stack`
 

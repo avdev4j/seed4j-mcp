@@ -5,13 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { HttpError, Seed4jClient, TimeoutError } from "../../src/client.js";
-import {
-  delayedRoute,
-  jsonRoute,
-  sequenceRoute,
-  startServer,
-  type MockServer,
-} from "./server.js";
+import { delayedRoute, jsonRoute, sequenceRoute, startServer, type MockServer } from "./server.js";
 
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
@@ -112,11 +106,7 @@ describe("integration: Seed4jClient against a real local HTTP server", () => {
 
   describe("write endpoints", () => {
     it("applyModule POSTs the exact { projectFolder, commit, parameters } envelope", async () => {
-      server.setRoute(
-        "POST",
-        "/api/modules/maven-java/apply-patch",
-        jsonRoute('{"status":"ok"}'),
-      );
+      server.setRoute("POST", "/api/modules/maven-java/apply-patch", jsonRoute('{"status":"ok"}'));
 
       const result = await client.applyModule(
         "maven-java",
@@ -165,11 +155,7 @@ describe("integration: Seed4jClient against a real local HTTP server", () => {
     it("applyPreset resolves /api/presets and then applies each module in order", async () => {
       server.setRoute("GET", "/api/presets", jsonRoute(await fixture("presets.json")));
       server.setRoute("POST", "/api/modules/init/apply-patch", jsonRoute('{"step":1}'));
-      server.setRoute(
-        "POST",
-        "/api/modules/maven-java/apply-patch",
-        jsonRoute('{"step":2}'),
-      );
+      server.setRoute("POST", "/api/modules/maven-java/apply-patch", jsonRoute('{"step":2}'));
 
       const result = JSON.parse(
         await client.applyPreset("Java Library with Maven", "/tmp/app", {
@@ -177,9 +163,7 @@ describe("integration: Seed4jClient against a real local HTTP server", () => {
         }),
       );
       expect(result.appliedCount).toBe(2);
-      const postPaths = server.requests
-        .filter((r) => r.method === "POST")
-        .map((r) => r.path);
+      const postPaths = server.requests.filter((r) => r.method === "POST").map((r) => r.path);
       expect(postPaths).toEqual([
         "/api/modules/init/apply-patch",
         "/api/modules/maven-java/apply-patch",
@@ -223,11 +207,7 @@ describe("integration: Seed4jClient against a real local HTTP server", () => {
     });
 
     it("throws TimeoutError when the server delays past the configured timeout", async () => {
-      server.setRoute(
-        "GET",
-        "/api/modules",
-        delayedRoute('{"categories":[]}', 200),
-      );
+      server.setRoute("GET", "/api/modules", delayedRoute('{"categories":[]}', 200));
       const fast = new Seed4jClient(server.baseUrl, undefined, {
         timeoutMs: 30,
         retries: 0,

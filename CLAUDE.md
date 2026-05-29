@@ -22,11 +22,12 @@ Planned improvements are tracked in [docs/ROADMAP.md](docs/ROADMAP.md) as number
 
 Three layers, kept intentionally thin:
 
-1. **Tools** — [src/tools.ts](src/tools.ts). `buildTools(client)` returns the list of MCP tool definitions (name, description, zod input shape, handler). Descriptions are the *only* documentation the agent sees; treat them as part of the public API. Handlers return raw JSON strings from seed4j wrapped in `{ content: [{ type: "text", text }] }`, so the agent sees the richest payload — only transform when a tool aggregates or filters the response.
-2. **Client** — [src/client.ts](src/client.ts). `Seed4jClient` holds the seed4j base URL and a `fetch` impl, and exposes one method per route. All seed4j HTTP routes live here so the tools layer stays free of transport concerns. The endpoint contracts (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`, `/api/presets`, `/api/projects`, `/api/modules-landscape`, `/management/info`) are pinned in [docs/seed4j-api.md](docs/seed4j-api.md) — last verified against the seed4j `main` branch on 2026-05-29. Each client method carries a `// Contract: docs/seed4j-api.md#…` comment pointing at the relevant section. Re-run [`scripts/verify-seed4j-api.ts`](scripts/verify-seed4j-api.ts) (`npm run verify:api`) against a live seed4j to confirm after a seed4j upgrade. Project initialisation is *not* a dedicated endpoint; `createProject` creates the target folder and then applies the `init` module via apply-patch.
+1. **Tools** — [src/tools.ts](src/tools.ts). `buildTools(client)` returns the list of MCP tool definitions (name, description, zod input shape, handler). Descriptions are the _only_ documentation the agent sees; treat them as part of the public API. Handlers return raw JSON strings from seed4j wrapped in `{ content: [{ type: "text", text }] }`, so the agent sees the richest payload — only transform when a tool aggregates or filters the response.
+2. **Client** — [src/client.ts](src/client.ts). `Seed4jClient` holds the seed4j base URL and a `fetch` impl, and exposes one method per route. All seed4j HTTP routes live here so the tools layer stays free of transport concerns. The endpoint contracts (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`, `/api/presets`, `/api/projects`, `/api/modules-landscape`, `/management/info`) are pinned in [docs/seed4j-api.md](docs/seed4j-api.md) — last verified against the seed4j `main` branch on 2026-05-29. Each client method carries a `// Contract: docs/seed4j-api.md#…` comment pointing at the relevant section. Re-run [`scripts/verify-seed4j-api.ts`](scripts/verify-seed4j-api.ts) (`npm run verify:api`) against a live seed4j to confirm after a seed4j upgrade. Project initialisation is _not_ a dedicated endpoint; `createProject` creates the target folder and then applies the `init` module via apply-patch.
 3. **Server / entrypoint** — [src/server.ts](src/server.ts) builds an `McpServer` and calls `registerTools` + `registerResources` + `registerPrompts`; [src/index.ts](src/index.ts) wires `Seed4jClient` + `StdioServerTransport` and connects them. Adding a new tool = adding an entry to `buildTools`; adding a new resource = adding an entry to `buildResources` in [src/resources.ts](src/resources.ts); adding a new prompt = adding an entry to `buildPrompts` in [src/prompts.ts](src/prompts.ts); no other wiring is required.
 
 ### Tools currently exposed
+
 - `ping_seed4j`
 - `list_modules`, `search_modules`, `get_module_details`, `get_module_dependencies`
 - `list_presets`, `get_preset_details`
@@ -34,15 +35,18 @@ Three layers, kept intentionally thin:
 - `create_project`, `apply_module`, `apply_modules`, `apply_preset`
 
 ### Resources currently exposed
+
 - `seed4j://catalogue/modules` — full module catalogue (backed by `/api/modules`)
 - `seed4j://catalogue/landscape` — module dependency-ranked graph (backed by `/api/modules-landscape`)
 - `seed4j://catalogue/presets` — curated preset list (backed by `/api/presets`)
 
 ### Prompts currently exposed
+
 - `seed4j-curated-stack` — `list_presets → get_preset_details → preview_module → apply_preset`
 - `seed4j-custom-stack` — `search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules`
 
 ### STDIO transport caveat
+
 The server runs over STDIO. The MCP framing lives on stdout, so **nothing else may write to stdout** — startup errors are routed to stderr in [src/index.ts](src/index.ts). If you add logging from tool handlers, use `console.error` (stderr) or write to a file; any `console.log` will corrupt the MCP stream and the client will hang.
 
 ## Build & Run
@@ -62,6 +66,12 @@ npm run dev
 
 # Typecheck only
 npm run typecheck
+
+# Lint + format gates
+npm run lint                        # eslint . (CI gate)
+npm run lint:fix
+npm run format                      # prettier . --write
+npm run format:check                # prettier . --check (CI gate)
 
 # Run all tests
 npm test
@@ -83,6 +93,7 @@ npx vitest run -t "applyModules"
 4. Add a unit test in [tests/tools.test.ts](tests/tools.test.ts) (delegation) and, if you added a non-trivial transform on the client side, in [tests/client.test.ts](tests/client.test.ts).
 
 ## Test layout
+
 - [tests/](tests/) — unit tests (one file per src/ module). Use `vi.fn()` fetchers / mock clients.
 - [tests/integration/](tests/integration/) — end-to-end tests that boot a real `node:http` server per suite on an ephemeral port and exercise `Seed4jClient` with the global `fetch`. Use these when you need to catch URL / body / response-shape drift that a hand-written mock can't.
 - [tests/fixtures/](tests/fixtures/) — JSON payloads used by integration tests (modules catalogue, landscape, presets, sample module schemas, project status). Hand-trimmed but shape-realistic.
@@ -97,7 +108,7 @@ When the user asks to "execute the roadmap", "work on item N", or otherwise pick
    - **What it covers** — the scope of the change in plain language.
    - **Goal** — why it matters for the project / users.
    - **User-visible output** — what an MCP client / agent will see differently once it ships (new tool, new field, new error shape, env var, etc.).
-   Wait for the user to react / approve before proceeding with the implementation.
+     Wait for the user to react / approve before proceeding with the implementation.
 2. **Keep the docs alive.** Maintain the [docs/](docs/) folder, which documents the **current** state of the MCP server (overview, tools, configuration, errors, client setup, develop, changelog). Every roadmap item must update the relevant `docs/` pages so the documentation always reflects what is shipped — never leave the docs stale. Append a per-item entry to [docs/changelog.md](docs/changelog.md).
 3. **Suggest a commit, do not commit.** When the implementation + tests + docs are done, propose a commit message (subject + body), but **never** run `git commit`. The user commits themselves.
 4. **Mark the roadmap entry done.** Edit [docs/ROADMAP.md](docs/ROADMAP.md) to flag the completed item (e.g. prepend `✅ ` to the heading or strike it through) so the next iteration picks the next open item.
