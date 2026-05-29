@@ -1,6 +1,6 @@
 # Errors
 
-## How failures surface to the agent
+## How failures surface to MCP clients and agents
 
 Every tool handler is wrapped in a small `wrap` helper ([src/tools.ts](../src/tools.ts)) that catches thrown errors and returns a **structured MCP error result** instead of letting the rejection bubble up:
 
@@ -11,7 +11,7 @@ Every tool handler is wrapped in a small `wrap` helper ([src/tools.ts](../src/to
 }
 ```
 
-MCP clients render `isError: true` results gracefully (typically as an inline error block the agent can read and the user can see), instead of aborting the whole turn the way a raw rejection might. The text inside is a JSON-encoded payload the agent can parse and route on.
+MCP clients render `isError: true` results gracefully, typically as an inline error block an assistant, agent, host workflow, and user can inspect, instead of aborting the whole turn the way a raw rejection might. The text inside is a JSON-encoded payload the caller can parse and route on.
 
 ### Payload shape
 
@@ -117,7 +117,7 @@ Read-only GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/mod
 
 - **Retryable:** `TimeoutError`, HTTP 5xx (`HttpError` with `status >= 500`), and other thrown errors (e.g. network errors from `fetch` itself).
 - **Not retryable:** HTTP 4xx (`HttpError` with `status < 500`) — these are deterministic (auth, bad slug, malformed query).
-- **Not retried at all:** POSTs to `apply-patch`. Re-running a half-applied module could leave the project in an inconsistent state — that decision belongs to the agent, not the transport layer.
+- **Not retried at all:** POSTs to `apply-patch`. Re-running a half-applied module could leave the project in an inconsistent state — that decision belongs to the calling assistant, agent, or host workflow, not the transport layer.
 
 Backoff is capped exponential: `min(retryBaseDelayMs * 2^attempt, retryMaxDelayMs)`. Defaults are `retries = 2` (so up to 3 attempts, override via `SEED4J_RETRIES`), `retryBaseDelayMs = 200`, `retryMaxDelayMs = 2_000`. When all attempts fail, the **last** error propagates unchanged — and the tool wrapper then turns it into the structured payload above.
 

@@ -1,6 +1,6 @@
 # seed4j-mcp Documentation
 
-This folder documents the **current** state of the seed4j MCP server: what it exposes to MCP clients and agents, how it talks to seed4j, how it is configured, and how failures surface.
+This folder documents the **current** state of the seed4j MCP server: what it exposes to MCP clients, AI coding assistants, autonomous agents, and custom host applications; how it talks to seed4j; how it is configured; and how failures surface.
 
 The goal is simple: a new user should be able to connect the server and run a first tool call in minutes, while a contributor should be able to understand the architecture and make a safe change without spelunking through the whole repository.
 
@@ -10,7 +10,7 @@ The goal is simple: a new user should be able to connect the server and run a fi
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Connect the MCP server and run a first tool call                     | [getting-started.md](getting-started.md)                                     |
 | Configure Claude Code, Claude Desktop, Cursor, or another MCP client | [clients.md](clients.md)                                                     |
-| Understand which tools, resources, and prompts an agent can use      | [tools.md](tools.md), [resources.md](resources.md), [prompts.md](prompts.md) |
+| Understand which tools, resources, and prompts MCP consumers can use | [tools.md](tools.md), [resources.md](resources.md), [prompts.md](prompts.md) |
 | Configure timeouts, retries, auth, cache, or logging                 | [configuration.md](configuration.md), [logging.md](logging.md)               |
 | Troubleshoot a failed call                                           | [errors.md](errors.md)                                                       |
 | Contribute to the server                                             | [develop.md](develop.md), [overview.md](overview.md)                         |
@@ -22,7 +22,7 @@ The goal is simple: a new user should be able to connect the server and run a fi
 
 1. [getting-started.md](getting-started.md) — install, connect, verify, and try a first flow.
 2. [clients.md](clients.md) — client-specific setup examples and environment wiring.
-3. [tools.md](tools.md) — the tool catalogue an agent will call.
+3. [tools.md](tools.md) — the tool catalogue an MCP client, assistant, or agent can call.
 4. [prompts.md](prompts.md) — guided curated-stack and custom-stack flows.
 5. [errors.md](errors.md) — what failures look like and what to check next.
 
@@ -48,9 +48,9 @@ The goal is simple: a new user should be able to connect the server and run a fi
 - [tools.md](tools.md) — every MCP tool exposed today: name, inputs, output, and when to use it.
 - [resources.md](resources.md) — read-only MCP resources for the catalogue: modules, landscape, presets.
 - [prompts.md](prompts.md) — MCP prompts that encode the curated-stack and custom-stack flows.
-- [clients.md](clients.md) — wiring the server into Claude Code, Claude Desktop, Cursor, and other MCP clients.
+- [clients.md](clients.md) — wiring the server into Claude Code, Claude Desktop, Cursor, custom hosts, and other MCP clients.
 - [configuration.md](configuration.md) — env vars consumed at startup and their defaults.
-- [errors.md](errors.md) — how failures are surfaced to the agent.
+- [errors.md](errors.md) — how failures are surfaced to MCP clients and agents.
 - [logging.md](logging.md) — opt-in JSONL debug log (`SEED4J_LOG_FILE`), events, and redaction notes.
 - [seed4j-api.md](seed4j-api.md) — verified seed4j HTTP contract: every endpoint, every field we read or send.
 - [develop.md](develop.md) — local development setup, tests, CI gates, and STDIO caveat.

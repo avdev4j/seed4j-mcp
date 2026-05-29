@@ -196,7 +196,7 @@ The seed4j history of a project folder.
 **Note:** the same path `GET /api/projects` also serves a **binary octet-stream** when `Accept` requests it (project zip download). The client always sends `Accept: application/json`, which routes to the JSON branch above.
 
 **Consumed by:** `get_project_status`.
-**Fields we read:** none — the body is forwarded as-is to the MCP agent.
+**Fields we read:** none — the body is forwarded as-is to the MCP caller.
 
 ### `GET /management/info`
 

@@ -1,6 +1,6 @@
 # MCP client setup
 
-The server speaks MCP over **STDIO**, so any MCP-aware client that can launch a subprocess can use it. `SEED4J_BASE_URL` defaults to `http://localhost:1339` — override it when seed4j runs elsewhere.
+The server speaks MCP over **STDIO**, so any MCP-aware client, assistant, automation runner, or custom host that can launch a subprocess can use it. `SEED4J_BASE_URL` defaults to `http://localhost:1339` — override it when seed4j runs elsewhere.
 
 ## Install
 
@@ -51,7 +51,7 @@ claude mcp list
 
 ## Claude Desktop, Cursor, and other JSON-config clients
 
-Point the client at the `npx` entrypoint in its MCP servers config:
+Point the client or host application at the `npx` entrypoint in its MCP servers config:
 
 ```json
 {

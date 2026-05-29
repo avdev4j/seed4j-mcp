@@ -10,6 +10,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 - **User impact:** docs now have a clearer first-reader path. [docs/README.md](README.md) points users, operators, and contributors to the right pages, and [getting-started.md](getting-started.md) walks through connecting an MCP client, verifying seed4j with `ping_seed4j`, and trying a first flow.
 - **Docs touched:** [README.md](../README.md), [docs/README.md](README.md), [getting-started.md](getting-started.md), [clients.md](clients.md), [prompts.md](prompts.md).
 
+### Documentation MCP consumer wording
+
+- **Shipped:** 2026-05-29
+- **User impact:** docs now describe the server as usable by MCP clients, AI coding assistants, autonomous agents, IDE integrations, automation runners, and custom host applications. Claude remains documented as an example client, not the assumed consumer.
+- **Docs touched:** [README.md](../README.md), [docs/README.md](README.md), [getting-started.md](getting-started.md), [clients.md](clients.md), [configuration.md](configuration.md), [overview.md](overview.md), [tools.md](tools.md), [prompts.md](prompts.md), [errors.md](errors.md), [seed4j-api.md](seed4j-api.md).
+
 ### #17 — Remove an applied module and its files
 
 - **Shipped:** 2026-05-29
@@ -60,7 +66,7 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 ### #11 — Ship MCP prompts for common flows
 
 - **Shipped:** 2026-05-29
-- **User impact:** two new MCP prompts encode the documented seed4j flows as slash-style starters: `seed4j-curated-stack` (`list_presets → get_preset_details → preview_module → apply_preset`) and `seed4j-custom-stack` (`search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules`). Each takes `stackDescription` (required) and `projectFolder` (optional) and returns one user-role message that lists the exact tool sequence to follow — so a fresh agent can't mis-order calls, and humans can see the on-ramp in their MCP client's prompt picker.
+- **User impact:** two new MCP prompts encode the documented seed4j flows as slash-style starters: `seed4j-curated-stack` (`list_presets → get_preset_details → preview_module → apply_preset`) and `seed4j-custom-stack` (`search_modules → get_module_dependencies → validate_properties → preview_module → apply_modules`). Each takes `stackDescription` (required) and `projectFolder` (optional) and returns one user-role message that lists the exact tool sequence to follow — so a fresh assistant, agent, or host workflow can't mis-order calls, and humans can see the on-ramp in their MCP client's prompt picker.
 - **API change:** new module [`src/prompts.ts`](../src/prompts.ts) with `buildPrompts` / `registerPrompts`. `src/server.ts` now calls all three registrations (tools + resources + prompts). No change to existing tools, resources, or `Seed4jClient`.
 - **Docs touched:** [overview.md](overview.md), [tools.md](tools.md), [prompts.md](prompts.md) (new), [README.md](README.md) (index).
 
@@ -88,14 +94,14 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 ### #7 — Richer `validate_properties` (ENUM, pattern, defaults)
 
 - **Shipped:** 2026-05-28
-- **User impact:** `validate_properties` now catches enum and pattern violations that previously passed silently, and surfaces the schema's default values so the agent knows exactly which fallbacks will apply at `apply_module` time. The response payload grows a `defaultsApplied: [{ key, default }]` array; a mandatory key that's missing but has a declared default is **no longer an error** — it's recorded as a default-to-be-applied. Errors stay errors; `valid` is still `errors.length === 0`.
-- **API change:** none for the tool input; the response shape gains one field. Agents that already parse `errors` / `warnings` keep working; agents that look at `defaultsApplied` get new value.
+- **User impact:** `validate_properties` now catches enum and pattern violations that previously passed silently, and surfaces the schema's default values so the calling assistant, agent, or host workflow knows exactly which fallbacks will apply at `apply_module` time. The response payload grows a `defaultsApplied: [{ key, default }]` array; a mandatory key that's missing but has a declared default is **no longer an error** — it's recorded as a default-to-be-applied. Errors stay errors; `valid` is still `errors.length === 0`.
+- **API change:** none for the tool input; the response shape gains one field. MCP consumers that already parse `errors` / `warnings` keep working; callers that look at `defaultsApplied` get new value.
 - **Docs touched:** [tools.md](tools.md).
 
 ### #6 — Expose a `commit` option on apply tools
 
 - **Shipped:** 2026-05-28
-- **User impact:** every apply tool (`apply_module`, `create_project`, `apply_modules`, `apply_preset`) gains an optional `commit: boolean` input, default `false`. When set to `true`, seed4j runs `git commit` after applying each module — agents that scaffold a project end-to-end now have a one-line way to produce a clean per-feature git history. Existing callers see no change.
+- **User impact:** every apply tool (`apply_module`, `create_project`, `apply_modules`, `apply_preset`) gains an optional `commit: boolean` input, default `false`. When set to `true`, seed4j runs `git commit` after applying each module — assistants, agents, and automation flows that scaffold a project end-to-end now have a one-line way to produce a clean per-feature git history. Existing callers see no change.
 - **API change:** `Seed4jClient.applyModule` / `createProject` / `applyModules` / `applyPreset` gain a trailing optional `commit = false` parameter. The flag flows into the apply-patch request body.
 - **Docs touched:** [tools.md](tools.md).
 

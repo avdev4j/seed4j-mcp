@@ -5,7 +5,7 @@ This guide gets `seed4j-mcp` from "never seen it before" to "connected to an MCP
 ## What you need
 
 - Node.js 20+
-- An MCP-capable client, such as Claude Code, Claude Desktop, Cursor, or a custom MCP host
+- An MCP-capable client, such as Claude Code, Claude Desktop, Cursor, an IDE integration, an automation runner, or a custom MCP host
 - A running seed4j instance reachable over HTTP
 
 By default the MCP server expects seed4j at `http://localhost:1339`. If your seed4j instance runs elsewhere, set `SEED4J_BASE_URL`.
@@ -39,13 +39,13 @@ The server speaks MCP over STDIO. It is usually launched by an MCP client, not b
 
 ## 3. Connect an MCP client
 
-For Claude Code:
+For Claude Code, use the CLI helper:
 
 ```bash
 claude mcp add seed4j --scope project -- npx -y seed4j-mcp
 ```
 
-For Claude Desktop, Cursor, or another JSON-configured MCP client:
+For Claude Desktop, Cursor, and other JSON-configured MCP clients or hosts:
 
 ```json
 {
@@ -73,7 +73,7 @@ For secured seed4j instances, add either `SEED4J_BEARER_TOKEN` or the full `SEED
 
 ## 4. Verify the connection
 
-Ask your MCP client or agent to call:
+Ask your MCP client, assistant, or agent host to call:
 
 ```text
 ping_seed4j
@@ -114,7 +114,7 @@ For a custom stack:
 Use the seed4j-custom-stack prompt to build a Maven Java project with the modules that fit best.
 ```
 
-Good agents should follow this shape before mutating a project:
+Good MCP consumers should follow this shape before mutating a project:
 
 1. Discover modules or presets.
 2. Fetch module details and dependencies.

@@ -1,6 +1,6 @@
 # Prompts
 
-MCP defines a third primitive — **prompts** — for parametrised prompt templates that clients surface (typically as slash-style starters). The user picks a prompt, fills in the arguments, and the server returns a structured message sequence the LLM treats as the starting context.
+MCP defines a third primitive — **prompts** — for parametrised prompt templates that clients and host applications can surface (typically as slash-style starters or reusable workflow starters). The user picks a prompt, fills in the arguments, and the server returns a structured message sequence for the assistant, agent, or model-backed workflow to use as starting context.
 
 This server registers two prompts, one per documented seed4j flow:
 
@@ -13,16 +13,16 @@ This server registers two prompts, one per documented seed4j flow:
 
 Both prompts accept the same two arguments:
 
-| Name               | Required | Description                                                                                                                              |
-| ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `stackDescription` | yes      | What the user wants to build, in their own words (e.g. `"Java library with Maven"`).                                                     |
-| `projectFolder`    | no       | Absolute path to the target project folder. Leave empty when the user hasn't decided yet — the prompt explicitly tells the agent to ask. |
+| Name               | Required | Description                                                                                                                               |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `stackDescription` | yes      | What the user wants to build, in their own words (e.g. `"Java library with Maven"`).                                                      |
+| `projectFolder`    | no       | Absolute path to the target project folder. Leave empty when the user hasn't decided yet — the prompt explicitly tells the caller to ask. |
 
 ## `seed4j-curated-stack`
 
 Use this when the user wants a curated, pre-ordered stack from the seed4j preset catalogue (the typical "give me a sensible default" case).
 
-The returned message tells the agent to:
+The returned message tells the assistant, agent, or host workflow to:
 
 1. Call `list_presets` (or read [`seed4j://catalogue/presets`](resources.md)) to fetch the curated catalogue.
 2. Pick the preset whose modules best match the description. Ask the user if two presets fit — never guess.
@@ -36,7 +36,7 @@ The returned message tells the agent to:
 
 Use this when the user wants a stack built from individual modules — no preset matches, or they want fine-grained control over each piece.
 
-The returned message tells the agent to:
+The returned message tells the assistant, agent, or host workflow to:
 
 1. Call `search_modules` with terms from the description to find candidate modules.
 2. For each module, call `get_module_dependencies` to get prerequisites in topological order and any `featureChoices` needing disambiguation.
@@ -47,14 +47,14 @@ The returned message tells the agent to:
 7. Confirm success with `get_project_status`.
 8. On any unexpected error, run `ping_seed4j` first.
 
-## When to use a prompt vs. just asking the agent
+## When to use a prompt vs. free-form instructions
 
-- **Prompts encode order.** A fresh agent that doesn't know seed4j won't accidentally call `apply_module` before `get_module_dependencies` — the prompt lists the steps in the right sequence.
-- **Prompts surface the on-ramp to humans.** Slash-style pickers (Claude Desktop, IDE plugins) show prompts as named entry points: a user sees `/seed4j-curated-stack` and immediately knows where to start.
-- **Prompts don't execute tools.** They only return text. Tool execution remains the agent's job; the prompt just tells it the order.
+- **Prompts encode order.** A fresh assistant, agent, or automation flow that doesn't know seed4j won't accidentally call `apply_module` before `get_module_dependencies` — the prompt lists the steps in the right sequence.
+- **Prompts surface the on-ramp to humans.** Slash-style pickers and workflow menus (Claude Desktop, IDE plugins, custom MCP clients) show prompts as named entry points: a user sees `/seed4j-curated-stack` and immediately knows where to start.
+- **Prompts don't execute tools.** They only return text. Tool execution remains the caller's job; the prompt just provides the order.
 
 ## What's not a prompt
 
 - **Removal flow.** The `remove_module` tool exists, but there is no dedicated `seed4j-remove-module` prompt yet. The tool's preview-first contract is documented in [tools.md](tools.md#remove_module).
-- **Bootstrap-from-scratch** combining preset + custom paths. Today the two prompts cover both cases; an agent that's unsure should ask the user which flow to take.
+- **Bootstrap-from-scratch** combining preset + custom paths. Today the two prompts cover both cases; a caller that's unsure should ask the user which flow to take.
 - **Localisation.** English-only.

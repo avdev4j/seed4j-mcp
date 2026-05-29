@@ -1,6 +1,6 @@
 # Tools
 
-Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type: "text", text }] }`, unless noted otherwise. Tool descriptions seen by the agent are the source of truth — this page mirrors them for human readers.
+Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type: "text", text }] }`, unless noted otherwise. Tool descriptions seen by MCP clients and agents are the source of truth — this page mirrors them for human readers.
 
 ## Connectivity
 
@@ -22,7 +22,7 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
     "error": "..." // only present when reachable: false
   }
   ```
-- **When to use:** on startup to confirm wiring, before a long apply plan, or when another tool returns an unexpected error and the agent needs to know whether seed4j is even up.
+- **When to use:** on startup to confirm wiring, before a long apply plan, or when another tool returns an unexpected error and the calling client or agent needs to know whether seed4j is even up.
 
 ## Catalogue
 
@@ -95,7 +95,7 @@ Every tool returns the raw JSON body from seed4j wrapped in `{ content: [{ type:
   - `.git/` directories are excluded from both sides of the diff (seed4j may auto-init git; the noise would dominate).
 
 - **Constraints:** the MCP server and seed4j must share a filesystem (same constraint as `apply_module` — seed4j needs to write to the scratch path). Disk required ≈ project size. Calls are non-cached and non-retried — preview always reflects the latest state.
-- **When to use:** pair with `validate_properties` before `apply_module` so the agent can show the user a concrete file-by-file plan instead of describing it. Recommended sequence: `validate_properties → preview_module → user confirms → apply_module`.
+- **When to use:** pair with `validate_properties` before `apply_module` so the MCP client or agent can show the user a concrete file-by-file plan instead of describing it. Recommended sequence: `validate_properties → preview_module → user confirms → apply_module`.
 
 ### `validate_properties`
 
@@ -190,7 +190,7 @@ The module catalogue, landscape, and preset list are **also** exposed as MCP res
 
 ## MCP prompts
 
-The two documented seed4j flows (curated stack, custom stack) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the agent doesn't have to infer it.
+The two documented seed4j flows (curated stack, custom stack) are exposed as MCP prompts — see [prompts.md](prompts.md). Prompts encode the tool order so the calling assistant, agent, or host workflow does not have to infer it.
 
 ## Not yet exposed
 
