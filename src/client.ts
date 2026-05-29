@@ -398,8 +398,16 @@ export class Seed4jClient {
     commit = false,
   ): Promise<string> {
     assertSafeMutationProjectFolder(projectFolder);
+    const existedBefore = await directoryExists(projectFolder);
     await mkdir(projectFolder, { recursive: true });
-    return this.applyModule("init", projectFolder, properties, commit);
+    try {
+      return await this.applyModule("init", projectFolder, properties, commit);
+    } catch (error) {
+      if (!existedBefore && (await directoryIsEmpty(projectFolder))) {
+        await rm(projectFolder, { recursive: true, force: true });
+      }
+      throw error;
+    }
   }
 
   async removeModule(
@@ -1000,6 +1008,15 @@ async function directoryExists(folder: string): Promise<boolean> {
   try {
     const info = await stat(folder);
     return info.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function directoryIsEmpty(folder: string): Promise<boolean> {
+  try {
+    const entries = await readdir(folder);
+    return entries.length === 0;
   } catch {
     return false;
   }

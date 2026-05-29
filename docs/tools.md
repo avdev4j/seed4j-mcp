@@ -133,7 +133,7 @@ Mutation tools reject unsafe `projectFolder` values before writing locally or ca
 ### `create_project`
 
 - **Input:** `projectFolder: string`, `properties: Record<string, unknown>`, `commit?: boolean` (default `false`).
-- **Behaviour:** `mkdir -p` the folder, then `apply_module("init", folder, properties, commit)`.
+- **Behaviour:** `mkdir -p` the folder, then `apply_module("init", folder, properties, commit)`. If the MCP server created the folder and `init` fails before anything is written, the empty folder is removed. If the folder already existed, or seed4j wrote partial files before failing, the folder is left in place for inspection/recovery.
 - **Output:** the seed4j apply-patch response for `init`.
 
 ### `apply_module`

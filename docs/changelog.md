@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #26 — Rework `create_project` failure behavior
+
+- **Shipped:** 2026-05-29
+- **User impact:** failed `create_project` calls now have predictable cleanup. If the MCP server created the target folder and seed4j's `init` fails before writing anything, the empty folder is removed. Pre-existing folders and folders containing partial seed4j output are left in place for inspection/recovery.
+- **Docs touched:** [tools.md](tools.md), [errors.md](errors.md), [ROADMAP.md](ROADMAP.md).
+
 ### #25 — Add path validation and mutation safety rails
 
 - **Shipped:** 2026-05-29

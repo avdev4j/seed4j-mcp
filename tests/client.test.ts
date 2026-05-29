@@ -752,6 +752,26 @@ describe("Seed4jClient", () => {
       await expect(client.createProject("relative/app", {})).rejects.toThrow(/absolute path/);
       expect(mocks.calls).toHaveLength(0);
     });
+
+    it("removes a folder it created when init fails before writing files", async () => {
+      const base = await mkdtemp(path.join(tmpdir(), "seed4j-mcp-"));
+      const target = path.join(base, "proj");
+      mocks.badRequest("missing property");
+
+      await expect(client.createProject(target, {})).rejects.toBeInstanceOf(HttpError);
+      await expect(access(target)).rejects.toThrow();
+    });
+
+    it("keeps a pre-existing folder when init fails", async () => {
+      const base = await mkdtemp(path.join(tmpdir(), "seed4j-mcp-"));
+      const target = path.join(base, "proj");
+      await mkdir(target);
+      mocks.badRequest("missing property");
+
+      await expect(client.createProject(target, {})).rejects.toBeInstanceOf(HttpError);
+      const info = await stat(target);
+      expect(info.isDirectory()).toBe(true);
+    });
   });
 
   describe("removeModule", () => {

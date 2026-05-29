@@ -232,12 +232,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Mutating tools reject unsafe paths before filesystem writes or seed4j POSTs; read-only status/preview behavior is documented intentionally.
 - **Shipped:** 2026-05-29 — `create_project`, `apply_module`, `apply_modules`, `apply_preset`, and confirmed/preview `remove_module` now reject empty, relative, and filesystem-root project folders before local writes or seed4j POSTs. See [changelog.md](changelog.md#25--add-path-validation-and-mutation-safety-rails).
 
-### 26. Rework or document `create_project` failure behavior
+### ✅ 26. Rework or document `create_project` failure behavior
 
 - **What:** Decide and implement the safest behavior when `create_project` creates a folder but the `init` module fails: either clean up folders created by the MCP server when still empty, or explicitly return/document the partial-folder behavior.
 - **Why:** A failed project creation should leave users with a predictable recovery path.
 - **Where:** [src/client.ts](../src/client.ts), [tests/client.test.ts](../tests/client.test.ts), [docs/tools.md](tools.md), [docs/errors.md](errors.md), [docs/changelog.md](changelog.md).
 - **Done when:** Tests cover failed `init` after folder creation, and docs describe exactly what remains on disk and how callers should recover.
+- **Shipped:** 2026-05-29 — `create_project` removes a newly-created target folder if `init` fails before anything is written. Pre-existing folders and folders containing partial seed4j output remain for inspection/recovery. See [changelog.md](changelog.md#26--rework-create_project-failure-behavior).
 
 ### 27. Add a remove-module prompt
 

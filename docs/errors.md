@@ -112,6 +112,10 @@ Some client methods throw plain `Error`s before any HTTP call. After wrapping th
 | `getModuleDependencies` | the slug is not found in the landscape.                   |
 | `validateProperties`    | (does not throw — returns `{ valid: false, errors }`).    |
 
+### `create_project` cleanup on failed `init`
+
+`create_project` creates the target folder locally before applying seed4j's `init` module. If `init` fails and the folder was newly created and still empty, the MCP server removes it. If the folder already existed, or seed4j wrote any partial files before failing, the folder is left in place so the user can inspect and recover manually.
+
 ## Retries on transient GET failures
 
 Read-only GETs (`/api/modules`, `/api/modules/{slug}`, `/api/presets`, `/api/modules-landscape`, `/api/projects?path=…`) are automatically retried inside `Seed4jClient` when the failure looks transient:
