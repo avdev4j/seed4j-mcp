@@ -122,11 +122,12 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** A suite exercises each tool against the mock and asserts on outputs.
 - **Shipped:** 2026-05-29 — `tests/integration/server.ts` boots a real `node:http` server per suite on port 0; `tests/integration/seed4j.test.ts` runs 14 end-to-end tests using the global `fetch` against hand-trimmed JHipster-Lite-shaped fixtures in `tests/fixtures/`. Covers reads, writes, validation, auth header propagation, retry across real sockets, `AbortController` timeouts, and ping. Recordings from a live seed4j wait on #15. See [changelog.md](changelog.md#14--integration-tests-against-a-mock-seed4j-server).
 
-### 15. Verify and document seed4j API stability
+### ✅ 15. Verify and document seed4j API stability
 - **What:** Confirm the assumed endpoints (`/api/modules`, `/api/modules/{slug}`, `/api/modules/{slug}/apply-patch`, `/api/presets`, `/api/projects`, `/api/modules-landscape`) against the running seed4j, and record the verified contract.
 - **Why:** CLAUDE.md flags these as inherited-from-JHipster-Lite and "verify before assuming stable" — drift here breaks every tool.
 - **Where:** docs + comments in [src/client.ts](../src/client.ts).
 - **Done when:** Each endpoint's request/response shape is documented and matches a live seed4j; any divergence is fixed.
+- **Shipped:** 2026-05-29 — new [docs/seed4j-api.md](seed4j-api.md) pins every endpoint with citations into the seed4j Java source. [scripts/verify-seed4j-api.ts](../scripts/verify-seed4j-api.ts) + `npm run verify:api` confirm the contract against a live instance. Divergence on `/api/projects` (`modules` not `appliedModules`) and missing `enumValues` / `pattern` fields on `/api/modules/{slug}` documented and fixture corrected. Client methods carry doc-pointer comments. See [changelog.md](changelog.md#15--verify-and-document-seed4j-api-stability).
 
 ### 16. CI: typecheck + test on PRs, and lint
 - **What:** Ensure `ci.yml` runs `npm run typecheck` and `npm test` on every PR; add a linter/formatter (ESLint + Prettier) if not already enforced.

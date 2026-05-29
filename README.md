@@ -40,6 +40,7 @@ All reference docs live under [docs/](docs/):
 - [docs/configuration.md](docs/configuration.md) — environment variables and their defaults.
 - [docs/errors.md](docs/errors.md) — how failures surface to the agent.
 - [docs/logging.md](docs/logging.md) — opt-in JSONL debug log (`SEED4J_LOG_FILE`).
+- [docs/seed4j-api.md](docs/seed4j-api.md) — verified seed4j HTTP contract.
 - [docs/develop.md](docs/develop.md) — local dev setup, tests, STDIO caveat.
 - [docs/changelog.md](docs/changelog.md) — what shipped, per roadmap item.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — planned improvements.

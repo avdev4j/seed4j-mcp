@@ -24,7 +24,7 @@
 
 ## seed4j HTTP endpoints used
 
-These paths are inherited from the JHipster-Lite-style API. Verify them against the running seed4j before assuming they're stable (see roadmap item 15).
+These paths are inherited from the JHipster-Lite-style API. The full request / response contracts are pinned in [seed4j-api.md](seed4j-api.md) — last verified against the seed4j `main` branch on 2026-05-29. Re-run [`scripts/verify-seed4j-api.ts`](../scripts/verify-seed4j-api.ts) against a live seed4j to confirm after upgrades.
 
 | Method | Path | Used by |
 | --- | --- | --- |

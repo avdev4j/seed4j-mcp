@@ -12,6 +12,7 @@ This folder documents the **current** state of the seed4j MCP server: what it ex
 - [configuration.md](configuration.md) — env vars consumed at startup and their defaults.
 - [errors.md](errors.md) — how failures are surfaced to the agent today.
 - [logging.md](logging.md) — opt-in JSONL debug log (`SEED4J_LOG_FILE`), events, redaction notes.
+- [seed4j-api.md](seed4j-api.md) — verified seed4j HTTP contract: every endpoint, every field we read or send.
 - [develop.md](develop.md) — local development setup, tests, STDIO caveat.
 - [changelog.md](changelog.md) — roadmap items as they ship, with the user-visible delta.
 - [ROADMAP.md](ROADMAP.md) — planned improvements, one per numbered entry.

@@ -4,6 +4,15 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #15 — Verify and document seed4j API stability
+
+- **Shipped:** 2026-05-29
+- **User impact:** the seed4j contract — every endpoint we call, every field we read, every status code we react to — is now pinned in [seed4j-api.md](seed4j-api.md), verified against the seed4j `main` branch. `scripts/verify-seed4j-api.ts` (`npm run verify:api`) lets an operator confirm the contract still holds after seed4j upgrades.
+- **Divergence found:** the `/api/projects` JSON root carries `modules`, not `appliedModules`, and each entry is just `{ slug }`. The [tests/fixtures/project-status.json](../tests/fixtures/project-status.json) fixture and the corresponding integration test were corrected. `Seed4jClient.getProjectStatus` was already correct (it forwards the body unchanged), so no runtime behaviour changed.
+- **Known seed4j-side gap (now explicit):** the `/api/modules/{slug}` response does **not** expose `enumValues` or `pattern` fields. The validation code shipped in #7 is defensive (multiple field-name fallbacks) and harmless against current seed4j payloads — it'll activate the moment seed4j surfaces those fields.
+- **API change:** none on the runtime. New module [`scripts/verify-seed4j-api.ts`](../scripts/verify-seed4j-api.ts) + `npm run verify:api`. Each `Seed4jClient` endpoint method gained a `// Contract: docs/seed4j-api.md#…` comment.
+- **Docs touched:** [seed4j-api.md](seed4j-api.md) (new), [overview.md](overview.md), [README.md](README.md) (index), [CLAUDE.md](../CLAUDE.md).
+
 ### #14 — Integration tests against a mock seed4j server
 
 - **Shipped:** 2026-05-29

@@ -1,8 +1,7 @@
 {
-  "projectFolder": "/tmp/myapp",
-  "appliedModules": [
-    { "slug": "init", "properties": { "projectName": "My App", "baseName": "myapp" } },
-    { "slug": "maven-java", "properties": { "packageName": "com.example.app" } }
+  "modules": [
+    { "slug": "init" },
+    { "slug": "maven-java" }
   ],
   "properties": {
     "projectName": "My App",

@@ -165,6 +165,7 @@ export class Seed4jClient {
     this.cache.delete(path);
   }
 
+  // Contract: docs/seed4j-api.md#get-managementinfo (best-effort version probe; liveness uses /api/modules).
   async ping(timeoutMs?: number): Promise<string> {
     const effectiveTimeout =
       timeoutMs !== undefined && timeoutMs > 0 ? timeoutMs : DEFAULT_PING_TIMEOUT_MS;
@@ -219,18 +220,22 @@ export class Seed4jClient {
     });
   }
 
+  // Contract: docs/seed4j-api.md#get-apimodules
   listModules(): Promise<string> {
     return this.getText("/api/modules");
   }
 
+  // Contract: docs/seed4j-api.md#get-apimodulesslug
   getModuleDetails(moduleSlug: string): Promise<string> {
     return this.getText(`/api/modules/${encodeURIComponent(moduleSlug)}`);
   }
 
+  // Contract: docs/seed4j-api.md#get-apipresets
   listPresets(): Promise<string> {
     return this.getText("/api/presets");
   }
 
+  // Contract: docs/seed4j-api.md#get-apimodules-landscape
   getModulesLandscape(): Promise<string> {
     return this.getText("/api/modules-landscape");
   }
@@ -298,6 +303,7 @@ export class Seed4jClient {
     });
   }
 
+  // Contract: docs/seed4j-api.md#post-apimodulesslugapply-patch
   applyModule(
     moduleSlug: string,
     projectFolder: string,
@@ -415,6 +421,7 @@ export class Seed4jClient {
     return this.applyModules(projectFolder, steps, commit);
   }
 
+  // Contract: docs/seed4j-api.md#get-apiprojects (response root has `modules`, not `appliedModules`).
   async getProjectStatus(projectFolder: string): Promise<string> {
     const url = `${this.baseUrl}/api/projects?path=${encodeURIComponent(projectFolder)}`;
     return this.withRetries(async () => {

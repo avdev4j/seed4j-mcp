@@ -27,7 +27,8 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:api": "tsx scripts/verify-seed4j-api.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",

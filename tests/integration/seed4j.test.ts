@@ -73,12 +73,14 @@ describe("integration: Seed4jClient against a real local HTTP server", () => {
       expect(result.featureChoices["build-tool"]).toEqual(["maven-java", "gradle-java"]);
     });
 
-    it("getProjectStatus passes the folder as a query param", async () => {
+    it("getProjectStatus passes the folder as a query param and parses { modules, properties }", async () => {
       const body = await fixture("project-status.json");
       server.setRoute("GET", "/api/projects", jsonRoute(body));
 
       const result = await client.getProjectStatus("/tmp/myapp");
-      expect(JSON.parse(result).projectFolder).toBe("/tmp/myapp");
+      const parsed = JSON.parse(result);
+      expect(parsed.modules).toEqual([{ slug: "init" }, { slug: "maven-java" }]);
+      expect(parsed.properties.baseName).toBe("myapp");
       const requestPath = server.requests[0]?.path ?? "";
       expect(requestPath.startsWith("/api/projects?path=")).toBe(true);
       expect(decodeURIComponent(requestPath.split("path=")[1] ?? "")).toBe("/tmp/myapp");
