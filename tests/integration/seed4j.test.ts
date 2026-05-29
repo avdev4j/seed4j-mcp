@@ -23,7 +23,9 @@ describe("integration: Seed4jClient against a real local HTTP server", () => {
   });
 
   afterEach(async () => {
-    await server.close();
+    if (server) {
+      await server.close();
+    }
   });
 
   describe("read endpoints", () => {

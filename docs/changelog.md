@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #19 — Make integration tests fail fast when local sockets are unavailable
+
+- **Shipped:** 2026-05-29
+- **User impact:** none at runtime. Test runs in restricted environments now fail integration setup immediately when binding `127.0.0.1` is blocked, instead of spending ~10 seconds per integration test and then throwing secondary cleanup errors.
+- **Docs touched:** [develop.md](develop.md), [ROADMAP.md](ROADMAP.md).
+
 ### #18 — Fix `remove_module` replay correctness for non-last modules
 
 - **Shipped:** 2026-05-29

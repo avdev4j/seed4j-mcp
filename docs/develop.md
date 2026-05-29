@@ -58,6 +58,8 @@ Two test layers under [tests/](../tests/):
 
 Both layers run under `npm test`. No separate command needed.
 
+The integration helper binds `127.0.0.1` on an ephemeral port. In restricted sandboxes where local socket binding is blocked, setup fails immediately with the underlying listen error instead of timing out every test.
+
 ## CI gates
 
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every push to `main` and every pull request, in this order: `npm ci → lint → format:check → typecheck → build → test`. A PR with any failure is blocked.

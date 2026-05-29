@@ -176,12 +176,13 @@ Each feature lists: **What**, **Why**, **Where** (the files most likely touched)
 - **Done when:** Unit tests cover removing a module followed by a later module that touches the same file; preview and confirm classify only the target module's net contribution against the final generated state.
 - **Shipped:** 2026-05-29 — `remove_module` now replays full history on the with-target side and full history minus the target on the without-target side. This fixes mid-history removals where later modules rewrite the same file. `modulesReplayed` now reports the total scratch apply calls across both replays. See [changelog.md](changelog.md#18--fix-remove_module-replay-correctness-for-non-last-modules).
 
-### 19. Make integration tests fail fast when local sockets are unavailable
+### ✅ 19. Make integration tests fail fast when local sockets are unavailable
 
 - **What:** Update the mock HTTP server test helper so `server.listen` rejects immediately on `error`, and guard cleanup when setup fails.
 - **Why:** In restricted environments, binding `127.0.0.1` can fail with `EPERM`. The suite should fail clearly in one place instead of timing out every integration test and producing secondary cleanup errors.
 - **Where:** [tests/integration/server.ts](../tests/integration/server.ts), [tests/integration/seed4j.test.ts](../tests/integration/seed4j.test.ts), [docs/develop.md](develop.md), [docs/changelog.md](changelog.md).
 - **Done when:** A listen failure surfaces as a single clear setup error; `afterEach` does not throw when setup failed; normal integration tests still pass where sockets are allowed.
+- **Shipped:** 2026-05-29 — the integration mock server now rejects its startup promise on `listen` errors and cleanup skips close when setup did not finish. Restricted sandboxes surface the underlying `EPERM` immediately instead of per-test hook timeouts. See [changelog.md](changelog.md#19--make-integration-tests-fail-fast-when-local-sockets-are-unavailable).
 
 ### 20. Run CI against every supported Node major
 
