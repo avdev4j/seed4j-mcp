@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### #28 — Support current seed4j per-module history files
+
+- **Shipped:** 2026-06-09
+- **User impact:** `remove_module` now supports both seed4j history layouts: legacy `.seed4j/modules/history.json` and current timestamped per-module JSON files such as `.seed4j/modules/20260609195013012-maven-java.json`. Preview and replay behavior stay the same; confirmed removal rewrites legacy `history.json` or deletes the matching per-module action file.
+- **Docs touched:** [tools.md](tools.md), [seed4j-api.md](seed4j-api.md).
+
 ### #27 — Add a remove-module prompt
 
 - **Shipped:** 2026-05-29

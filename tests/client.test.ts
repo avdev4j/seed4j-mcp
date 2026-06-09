@@ -834,7 +834,31 @@ describe("Seed4jClient", () => {
         );
       }
 
-      return { newTmp, cleanup, buildClient, plantHistory };
+      async function plantModuleFileHistory(
+        projectFolder: string,
+        actions: Array<{ module: string; properties?: Record<string, unknown> }>,
+      ) {
+        const dir = path.join(projectFolder, ".seed4j", "modules");
+        await mkdir(dir, { recursive: true });
+        for (const [i, action] of actions.entries()) {
+          const date = `2026-06-09T19:50:${String(i).padStart(2, "0")}Z`;
+          const timestamp = `202606091950${String(i).padStart(5, "0")}`;
+          await writeFile(
+            path.join(dir, `${timestamp}-${action.module}.json`),
+            JSON.stringify(
+              {
+                module: action.module,
+                date,
+                properties: action.properties ?? {},
+              },
+              null,
+              2,
+            ),
+          );
+        }
+      }
+
+      return { newTmp, cleanup, buildClient, plantHistory, plantModuleFileHistory };
     }
 
     it("returns action: 'not-applied' when history.json is missing", async () => {
@@ -901,6 +925,42 @@ describe("Seed4jClient", () => {
 
         const stillThere = await readFile(path.join(projectFolder, "pom.xml"), "utf8");
         expect(stillThere).toBe("<maven/>");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("reads timestamped module history files when history.json is absent", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantModuleFileHistory(projectFolder, [
+          { module: "init", properties: { baseName: "demo" } },
+          { module: "maven-java", properties: { packageName: "com.example" } },
+        ]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<maven/>");
+
+        const capturedProperties: Array<{ slug: string; props: Record<string, unknown> }> = [];
+        const remover = fx.buildClient({
+          init: async (_dir, props) => {
+            capturedProperties.push({ slug: "init", props });
+          },
+          "maven-java": async (dir, props) => {
+            capturedProperties.push({ slug: "maven-java", props });
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+        });
+
+        const payload = JSON.parse(await remover.removeModule("maven-java", projectFolder, {}));
+        expect(payload.action).toBe("preview");
+        expect(payload.filesToDelete).toEqual([{ path: "pom.xml", sizeBytes: "<maven/>".length }]);
+        expect(payload.historyUpdate).toEqual({ currentActions: 2, afterRemoval: 1 });
+        expect(capturedProperties.filter((c) => c.slug === "init")[0]?.props).toEqual({
+          baseName: "demo",
+        });
+        expect(capturedProperties.filter((c) => c.slug === "maven-java")[0]?.props).toEqual({
+          packageName: "com.example",
+        });
       } finally {
         await fx.cleanup();
       }
@@ -1034,6 +1094,42 @@ describe("Seed4jClient", () => {
         );
         expect(history.actions).toHaveLength(1);
         expect(history.actions[0].module).toBe("init");
+      } finally {
+        await fx.cleanup();
+      }
+    });
+
+    it("confirm deletes the matching timestamped module history file", async () => {
+      const fx = removeFixture();
+      try {
+        const projectFolder = await fx.newTmp();
+        await fx.plantModuleFileHistory(projectFolder, [
+          { module: "init" },
+          { module: "maven-java" },
+        ]);
+        await writeFile(path.join(projectFolder, "pom.xml"), "<maven/>");
+
+        const remover = fx.buildClient({
+          init: async () => undefined,
+          "maven-java": async (dir) => {
+            await writeFile(path.join(dir, "pom.xml"), "<maven/>");
+          },
+        });
+
+        const payload = JSON.parse(
+          await remover.removeModule("maven-java", projectFolder, { confirm: true }),
+        );
+        expect(payload.action).toBe("removed");
+        expect(payload.historyUpdated).toBe(true);
+
+        await expect(
+          access(
+            path.join(projectFolder, ".seed4j", "modules", "20260609195000001-maven-java.json"),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          access(path.join(projectFolder, ".seed4j", "modules", "20260609195000000-init.json")),
+        ).resolves.toBeUndefined();
       } finally {
         await fx.cleanup();
       }
