@@ -4,6 +4,12 @@ User-visible deltas as [ROADMAP.md](ROADMAP.md) items land. The roadmap is the s
 
 ## Unreleased
 
+### Packaging — rebuild install artifacts before publishing
+
+- **Shipped:** unreleased
+- **User impact:** npm release and Git-install paths now rebuild `dist` from `src` before packaging, preventing stale installed artifacts from exposing an older MCP tool list than the source. The lockfile version is also aligned with `package.json`, and tests now fail if those versions drift again.
+- **Tool count:** packaged `dist/tools.js` currently exposes **17** tools.
+
 ### #28 — Support current seed4j per-module history files
 
 - **Shipped:** 2026-06-09

@@ -7,14 +7,28 @@ import { describe, expect, it } from "vitest";
 import { PACKAGE_VERSION } from "../src/version.js";
 
 describe("PACKAGE_VERSION", () => {
-  it("matches the version field in package.json", () => {
+  function readJson(fileName: string): Record<string, unknown> {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    const packageJsonPath = path.join(here, "..", "package.json");
-    const raw = readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { version?: unknown };
+    const filePath = path.join(here, "..", fileName);
+    const raw = readFileSync(filePath, "utf8");
+    return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  it("matches the version field in package.json", () => {
+    const parsed = readJson("package.json") as { version?: unknown };
     expect(typeof parsed.version).toBe("string");
     expect((parsed.version as string).length).toBeGreaterThan(0);
     expect(PACKAGE_VERSION).toBe(parsed.version);
+  });
+
+  it("keeps package-lock.json aligned with package.json", () => {
+    const packageJson = readJson("package.json") as { version?: unknown };
+    const packageLock = readJson("package-lock.json") as {
+      version?: unknown;
+      packages?: Record<string, { version?: unknown }>;
+    };
+    expect(packageLock.version).toBe(packageJson.version);
+    expect(packageLock.packages?.[""]?.version).toBe(packageJson.version);
   });
 
   it("is a non-empty semver-shaped string", () => {

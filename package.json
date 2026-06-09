@@ -1,6 +1,6 @@
 {
   "name": "seed4j-mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP server exposing seed4j to AI agents",
   "license": "Apache-2.0",
   "repository": {
@@ -23,6 +23,8 @@
   ],
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
