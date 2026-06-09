@@ -37,6 +37,8 @@ npm run dev
 
 The server speaks MCP over STDIO. It is usually launched by an MCP client, not by a human typing tool calls into the terminal.
 
+If you use `npm install -g seed4j-mcp` instead of `npx`, configure the absolute binary path from `which seed4j-mcp`. Desktop clients may not inherit your terminal's `nvm`/Node `PATH`, so a bare `seed4j-mcp` command can launch a different global install than the one you just checked.
+
 ## 3. Connect an MCP client
 
 For Codex:

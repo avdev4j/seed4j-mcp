@@ -16,6 +16,25 @@ If you prefer a global install:
 npm install -g seed4j-mcp
 ```
 
+Global installs are sensitive to the `PATH` seen by the MCP host. This is especially easy to miss with `nvm`, because a terminal may resolve `seed4j-mcp` from one Node version while a desktop app resolves a different global prefix, or no prefix at all. To make a global install deterministic, configure the absolute binary path:
+
+```bash
+which seed4j-mcp
+npm list -g seed4j-mcp --depth=0
+```
+
+Then use the returned path as the MCP command, for example:
+
+```json
+{
+  "mcpServers": {
+    "seed4j": {
+      "command": "/Users/me/.nvm/versions/node/v24.15.0/bin/seed4j-mcp"
+    }
+  }
+}
+```
+
 To build from source, see [develop.md](develop.md).
 
 ## Codex
@@ -93,7 +112,7 @@ Point the client or host application at the `npx` entrypoint in its MCP servers 
 
 Add any of the [supported env vars](configuration.md) (timeout, retries, bearer token, …) to the `env` block.
 
-If you installed `seed4j-mcp` globally, swap `npx`/`-y seed4j-mcp` for `seed4j-mcp` directly.
+If you installed `seed4j-mcp` globally, swap `npx`/`-y seed4j-mcp` for the absolute `seed4j-mcp` path returned by `which seed4j-mcp`.
 
 ## Verifying the connection
 
