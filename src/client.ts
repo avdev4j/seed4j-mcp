@@ -123,17 +123,22 @@ const REMOVE_SKIP_SEGMENTS = new Set([".git", ".seed4j"]);
 
 const SEED4J_HISTORY_DIR = ".seed4j/modules";
 const SEED4J_HISTORY_FILE = "history.json";
+const SEED4J_HISTORY_JSON_SUFFIX = ".json";
 
 // Contract: docs/seed4j-api.md#project-local-files
-// .seed4j/modules/history.json shape inside a seed4j project folder.
+// seed4j stores history either as legacy .seed4j/modules/history.json or as one
+// timestamp-prefixed JSON file per applied module in .seed4j/modules/.
 interface SeedHistoryAction {
   module: string;
   date: string;
   properties: Properties;
 }
 
+type SeedHistoryStorage = { kind: "legacy" } | { kind: "module-files"; actionFiles: string[] };
+
 interface SeedHistory {
   actions: SeedHistoryAction[];
+  storage: SeedHistoryStorage;
 }
 
 interface RemoveModuleOptions {
@@ -544,8 +549,9 @@ export class Seed4jClient {
 
       const updatedHistory: SeedHistory = {
         actions: history.actions.filter((_: SeedHistoryAction, i: number) => i !== actionIndex),
+        storage: history.storage,
       };
-      await writeSeed4jHistoryAtomic(projectFolder, updatedHistory);
+      await removeSeed4jHistoryAction(projectFolder, history, updatedHistory, actionIndex);
 
       return JSON.stringify({
         moduleSlug,
@@ -1067,13 +1073,18 @@ async function walkInto(
 }
 
 async function readSeed4jHistory(projectFolder: string): Promise<SeedHistory | null> {
-  const filePath = path.join(projectFolder, SEED4J_HISTORY_DIR, SEED4J_HISTORY_FILE);
+  const dirPath = path.join(projectFolder, SEED4J_HISTORY_DIR);
+  const filePath = path.join(dirPath, SEED4J_HISTORY_FILE);
   let raw: string;
   try {
     raw = await readFile(filePath, "utf8");
+    return parseLegacySeed4jHistory(raw);
   } catch {
-    return null;
+    return readSeed4jModuleFileHistory(dirPath);
   }
+}
+
+function parseLegacySeed4jHistory(raw: string): SeedHistory | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -1082,32 +1093,88 @@ async function readSeed4jHistory(projectFolder: string): Promise<SeedHistory | n
   }
   if (!parsed || typeof parsed !== "object") return null;
   const root = parsed as { actions?: unknown };
-  if (!Array.isArray(root.actions)) return { actions: [] };
+  if (!Array.isArray(root.actions)) return { actions: [], storage: { kind: "legacy" } };
   const actions: SeedHistoryAction[] = [];
   for (const item of root.actions) {
-    if (!item || typeof item !== "object") continue;
-    const candidate = item as Record<string, unknown>;
-    const module = typeof candidate.module === "string" ? candidate.module : null;
-    if (!module) continue;
-    const date = typeof candidate.date === "string" ? candidate.date : "";
-    const properties =
-      candidate.properties && typeof candidate.properties === "object"
-        ? (candidate.properties as Properties)
-        : {};
-    actions.push({ module, date, properties });
+    const action = parseSeed4jHistoryAction(item);
+    if (action) actions.push(action);
   }
-  return { actions };
+  return { actions, storage: { kind: "legacy" } };
 }
 
-async function writeSeed4jHistoryAtomic(
+async function readSeed4jModuleFileHistory(dirPath: string): Promise<SeedHistory | null> {
+  let entries;
+  try {
+    entries = await readdir(dirPath, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const files = entries
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name !== SEED4J_HISTORY_FILE &&
+        entry.name.endsWith(SEED4J_HISTORY_JSON_SUFFIX),
+    )
+    .map((entry) => entry.name)
+    .sort();
+
+  if (files.length === 0) return null;
+
+  const actions: SeedHistoryAction[] = [];
+  const actionFiles: string[] = [];
+  for (const file of files) {
+    const raw = await readFile(path.join(dirPath, file), "utf8").catch(() => null);
+    if (raw === null) continue;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+
+    const action = parseSeed4jHistoryAction(parsed);
+    if (!action) continue;
+    actions.push(action);
+    actionFiles.push(file);
+  }
+
+  return { actions, storage: { kind: "module-files", actionFiles } };
+}
+
+function parseSeed4jHistoryAction(item: unknown): SeedHistoryAction | null {
+  if (!item || typeof item !== "object") return null;
+  const candidate = item as Record<string, unknown>;
+  const module = typeof candidate.module === "string" ? candidate.module : null;
+  if (!module) return null;
+  const date = typeof candidate.date === "string" ? candidate.date : "";
+  const properties =
+    candidate.properties && typeof candidate.properties === "object"
+      ? (candidate.properties as Properties)
+      : {};
+  return { module, date, properties };
+}
+
+async function removeSeed4jHistoryAction(
   projectFolder: string,
-  history: SeedHistory,
+  previousHistory: SeedHistory,
+  updatedHistory: SeedHistory,
+  actionIndex: number,
 ): Promise<void> {
+  if (previousHistory.storage.kind === "module-files") {
+    const file = previousHistory.storage.actionFiles[actionIndex];
+    if (file) {
+      await rm(path.join(projectFolder, SEED4J_HISTORY_DIR, file), { force: true });
+    }
+    return;
+  }
+
   const dirPath = path.join(projectFolder, SEED4J_HISTORY_DIR);
   await mkdir(dirPath, { recursive: true });
   const finalPath = path.join(dirPath, SEED4J_HISTORY_FILE);
   const tempPath = path.join(dirPath, `.${SEED4J_HISTORY_FILE}.tmp-${process.pid}-${Date.now()}`);
-  const body = `${JSON.stringify(history, null, 2)}\n`;
+  const body = `${JSON.stringify({ actions: updatedHistory.actions }, null, 2)}\n`;
   await writeFile(tempPath, body);
   await rename(tempPath, finalPath);
 }

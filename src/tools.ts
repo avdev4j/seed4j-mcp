@@ -198,19 +198,19 @@ export function buildTools(client: Seed4jClient): ToolDefinition[] {
     {
       name: "remove_module",
       description:
-        "Remove a previously-applied seed4j module from a project: identifies the files that module installed (by replaying the project's history twice — with and without the target — into scratch dirs), classifies them as clean-since-install vs locally-modified (the latter typically contains business code the user added on top of the scaffold), and either previews or executes deletion/revert. Default mode is preview — no disk mutation. Set confirm: true to execute. By default, locally-modified files are skipped; set force: true to act on them too. On a successful confirm, also updates .seed4j/modules/history.json so get_project_status reflects the removal. The operation is heavyweight: replays ~2N apply-patch calls (N = number of applied modules in the project's history). Before flipping confirm: true, surface the locallyModifiedFiles list to the user — those are the files the caller will skip or destroy.",
+        "Remove a previously-applied seed4j module from a project: identifies the files that module installed (by replaying the project's history twice — with and without the target — into scratch dirs), classifies them as clean-since-install vs locally-modified (the latter typically contains business code the user added on top of the scaffold), and either previews or executes deletion/revert. Default mode is preview — no disk mutation. Set confirm: true to execute. By default, locally-modified files are skipped; set force: true to act on them too. On a successful confirm, also updates .seed4j/modules history so get_project_status reflects the removal; legacy history.json and current timestamped per-module JSON files are both supported. The operation is heavyweight: replays ~2N apply-patch calls (N = number of applied modules in the project's history). Before flipping confirm: true, surface the locallyModifiedFiles list to the user — those are the files the caller will skip or destroy.",
       inputSchema: {
         moduleSlug: z.string().describe("Slug identifier of the seed4j module to remove."),
         projectFolder: z
           .string()
           .describe(
-            "Absolute path to the project folder. Must contain a `.seed4j/modules/history.json` (otherwise the call returns action: 'not-applied').",
+            "Absolute path to the project folder. Must contain seed4j module history in `.seed4j/modules/history.json` or timestamped `.seed4j/modules/*.json` files (otherwise the call returns action: 'not-applied').",
           ),
         confirm: z
           .boolean()
           .optional()
           .describe(
-            "Default false. When false (or omitted), returns a preview only — no disk mutation. When true, actually deletes/reverts the files and updates history.json.",
+            "Default false. When false (or omitted), returns a preview only — no disk mutation. When true, actually deletes/reverts the files and updates seed4j module history.",
           ),
         force: z
           .boolean()
